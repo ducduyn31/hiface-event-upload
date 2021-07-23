@@ -7,5 +7,5 @@ export class ScreenInfo {
   password: string;
   rom_version: string;
   sn_number: string;
-  user_name: string;
+  username: string;
 }
