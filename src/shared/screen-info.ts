@@ -8,4 +8,7 @@ export class ScreenInfo {
   rom_version: string;
   sn_number: string;
   username: string;
+  device_token: string;
+  user_token: string;
+  user_secret: string;
 }

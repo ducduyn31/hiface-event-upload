@@ -1,39 +1,38 @@
-import { Body, Controller, Get, Put } from '@nestjs/common';
+import {
+  Body,
+  CACHE_MANAGER,
+  Controller,
+  Get,
+  Inject,
+  Put,
+} from '@nestjs/common';
 import { ScreenInfo } from '../shared/screen-info';
 import { ServerInfo } from '../shared/server-info';
+import { Cache } from 'cache-manager';
 
 @Controller('config')
 export class ConfigController {
-  constructor(private screen: ScreenInfo, private server: ServerInfo) {}
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   @Put('screen')
   updateScreen(@Body() screen: ScreenInfo) {
-    this.screen.app_channel = screen.app_channel;
-    this.screen.app_version = screen.app_version;
-    this.screen.client_version_list = screen.client_version_list;
-    this.screen.device_channel = screen.device_channel;
-    this.screen.factory_setting = screen.factory_setting;
-    this.screen.password = screen.password;
-    this.screen.rom_version = screen.rom_version;
-    this.screen.sn_number = screen.sn_number;
-    this.screen.username = screen.app_channel;
-    return this.screen;
+    this.cacheManager.set('screen', screen, { ttl: 0 });
+    return screen;
   }
 
   @Get('screen')
   getScreen() {
-    return this.screen;
+    return this.cacheManager.get('screen');
   }
 
   @Put('server')
   updateServer(@Body() server: ServerInfo) {
-    this.server.host = server.host;
-    this.server.port = server.port;
-    return this.server;
+    this.cacheManager.set('server', server, { ttl: 0 });
+    return server;
   }
 
   @Get('server')
   getServer() {
-    return this.server;
+    return this.cacheManager.get('server');
   }
 }
