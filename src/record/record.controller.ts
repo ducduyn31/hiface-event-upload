@@ -42,16 +42,15 @@ export class RecordController {
     if (!pad) throw new HttpException('Screen is not set up yet', 400);
 
     return combineLatest([
-      this.foliageService.recognize(server, file).pipe(
-        pluck('candidates'),
-        map((candidates) => candidates[0]),
-      ),
+      this.foliageService.recognize(server, file).pipe(pluck('person')),
       this.recordService
         .uploadRecordPhoto(server, pad, file)
         .pipe(pluck('data'), pluck('key')),
     ]).pipe(
-      mergeMap((value, index) => {
+      mergeMap((value) => {
         const [candidate, photoPath] = value;
+        if (!candidate.recognized)
+          throw new HttpException('Face is not recognizable', 300);
         return this.recordService.uploadEvent(
           server,
           pad,
