@@ -21,7 +21,7 @@ import {
   VerificationMode,
 } from './record';
 import * as moment from 'moment';
-import { map, mergeMap, pluck } from 'rxjs/operators';
+import { mergeMap, pluck } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
 import { combineLatest } from 'rxjs';
 
