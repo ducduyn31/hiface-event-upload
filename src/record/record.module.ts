@@ -4,6 +4,7 @@ import { SharedModule } from '../shared/shared.module';
 import { RecordService } from './record.service';
 import { ConfigModule as cfModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config';
+import { FoliageService } from './foliage/foliage.service';
 import * as redisStore from 'cache-manager-redis-store';
 
 @Module({
@@ -22,6 +23,6 @@ import * as redisStore from 'cache-manager-redis-store';
     }),
   ],
   controllers: [RecordController],
-  providers: [RecordService],
+  providers: [RecordService, FoliageService],
 })
 export class RecordModule {}

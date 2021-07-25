@@ -7,6 +7,12 @@ import { generateSignature } from '../utils/signature';
 import { pluck } from 'rxjs/operators';
 import * as FormData from 'form-data';
 import * as md5 from 'md5';
+import {
+  LivenessType,
+  PassType,
+  RecognitionType,
+  VerificationMode,
+} from './record';
 
 @Injectable()
 export class RecordService {
@@ -67,12 +73,12 @@ export class RecordService {
     pad: ScreenInfo,
     subjectId: number,
     photoPath: string,
-    recognitionType: number,
-    verificationMode: number,
-    passType: number,
+    recognitionType: RecognitionType,
+    verificationMode: VerificationMode,
+    passType: PassType,
     recognitionScore: number,
     livenessScore: number,
-    livenessType: number,
+    livenessType: LivenessType,
     timestamp: number,
   ) {
     const host = `${server.host}:${server.port}/meglink/${pad.device_token}/record/batch_upload`;
@@ -100,9 +106,11 @@ export class RecordService {
       {},
     );
 
-    return this.http.post(host, payload, {
-      headers,
-    });
+    return this.http
+      .post(host, payload, {
+        headers,
+      })
+      .pipe(pluck('data'));
   }
 
   private static generateOAuthHeaders(

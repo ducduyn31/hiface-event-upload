@@ -13,16 +13,61 @@ import { ScreenInfo } from '../shared/screen-info';
 import { RecordService } from './record.service';
 import { Cache } from 'cache-manager';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Record } from './record';
+import {
+  LivenessType,
+  PassType,
+  RecognitionType,
+  Record,
+  VerificationMode,
+} from './record';
 import * as moment from 'moment';
-import { mergeMap, pluck } from 'rxjs/operators';
+import { map, mergeMap, pluck } from 'rxjs/operators';
+import { FoliageService } from './foliage/foliage.service';
+import { combineLatest } from 'rxjs';
 
 @Controller('record')
 export class RecordController {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private recordService: RecordService,
+    private foliageService: FoliageService,
   ) {}
+
+  @Post('quick')
+  @UseInterceptors(FileInterceptor('photo'))
+  async quick(@UploadedFile() file: Express.Multer.File) {
+    const server: ServerInfo = await this.cacheManager.get('server');
+    const pad: ScreenInfo = await this.cacheManager.get('screen');
+    if (!server) throw new HttpException('Server is not set up yet', 400);
+    if (!pad) throw new HttpException('Screen is not set up yet', 400);
+
+    return combineLatest([
+      this.foliageService.recognize(server, file).pipe(
+        pluck('candidates'),
+        map((candidates) => candidates[0]),
+      ),
+      this.recordService
+        .uploadRecordPhoto(server, pad, file)
+        .pipe(pluck('data'), pluck('key')),
+    ]).pipe(
+      mergeMap((value, index) => {
+        const [candidate, photoPath] = value;
+        return this.recordService.uploadEvent(
+          server,
+          pad,
+          candidate.subject_id,
+          photoPath as string,
+          RecognitionType.EMPLOYEE,
+          VerificationMode.FACE,
+          PassType.PASS,
+          +candidate.confidence,
+          +candidate.confidence,
+          LivenessType.NOT_DETECTED,
+          moment().unix(),
+        );
+      }),
+    );
+  }
 
   @Post()
   @UseInterceptors(FileInterceptor('event_photo'))
