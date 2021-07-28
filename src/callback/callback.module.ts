@@ -1,16 +1,15 @@
 import { CacheModule, HttpModule, Module } from '@nestjs/common';
-import { RecordController } from './record.controller';
-import { SharedModule } from '../shared/shared.module';
-import { RecordService } from './record.service';
+import { CallbackController } from './callback.controller';
 import { ConfigModule as cfModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config';
-import { FoliageService } from './foliage/foliage.service';
 import * as redisStore from 'cache-manager-redis-store';
+import { FoliageService } from '../record/foliage/foliage.service';
+import { RecordService } from '../record/record.service';
+import { RecordModule } from '../record/record.module';
 
 @Module({
   imports: [
     HttpModule,
-    SharedModule,
     cfModule.forRoot(),
     CacheModule.registerAsync({
       imports: [cfModule],
@@ -21,9 +20,9 @@ import * as redisStore from 'cache-manager-redis-store';
       }),
       inject: [ConfigService],
     }),
+    RecordModule,
   ],
-  controllers: [RecordController],
-  providers: [RecordService, FoliageService],
-  exports: [RecordService, FoliageService],
+  controllers: [CallbackController],
+  providers: [FoliageService, RecordService],
 })
-export class RecordModule {}
+export class CallbackModule {}

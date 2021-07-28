@@ -21,7 +21,7 @@ import {
   VerificationMode,
 } from './record';
 import * as moment from 'moment';
-import { mergeMap, pluck } from 'rxjs/operators';
+import { mergeMap, pluck, tap } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
 import { combineLatest } from 'rxjs';
 
@@ -42,25 +42,25 @@ export class RecordController {
     if (!pad) throw new HttpException('Screen is not set up yet', 400);
 
     return combineLatest([
-      this.foliageService.recognize(server, file).pipe(pluck('person')),
+      this.foliageService.recognize(server, file),
       this.recordService
         .uploadRecordPhoto(server, pad, file)
         .pipe(pluck('data'), pluck('key')),
     ]).pipe(
       mergeMap((value) => {
-        const [candidate, photoPath] = value;
-        if (!candidate.recognized)
+        const [result, photoPath] = value;
+        if (!result.recognized)
           throw new HttpException('Face is not recognizable', 300);
         return this.recordService.uploadEvent(
           server,
           pad,
-          candidate.subject_id,
+          result.person.subject_id,
           photoPath as string,
           RecognitionType.EMPLOYEE,
           VerificationMode.FACE,
           PassType.PASS,
-          +candidate.confidence,
-          +candidate.confidence,
+          +result.person.confidence,
+          +result.person.confidence,
           LivenessType.NOT_DETECTED,
           moment().unix(),
         );
