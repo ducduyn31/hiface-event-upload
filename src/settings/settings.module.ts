@@ -1,15 +1,15 @@
 import { CacheModule, Module } from '@nestjs/common';
-import { ConfigController } from './config.controller';
+import { SettingsController } from './settings.controller';
 import { SharedModule } from '../shared/shared.module';
-import { ConfigModule as cfModule, ConfigService } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
 
 @Module({
   imports: [
     SharedModule,
-    cfModule.forRoot(),
+    ConfigModule.forRoot(),
     CacheModule.registerAsync({
-      imports: [cfModule],
+      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         store: redisStore,
         host: configService.get('REDIS_HOST'),
@@ -18,6 +18,6 @@ import * as redisStore from 'cache-manager-redis-store';
       inject: [ConfigService],
     }),
   ],
-  controllers: [ConfigController],
+  controllers: [SettingsController],
 })
-export class ConfigModule {}
+export class SettingsModule {}

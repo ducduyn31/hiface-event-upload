@@ -11,7 +11,7 @@ import { ServerInfo } from '../shared/server-info';
 import { Cache } from 'cache-manager';
 
 @Controller('config')
-export class ConfigController {
+export class SettingsController {
   constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   @Put('screen')

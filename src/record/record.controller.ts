@@ -21,7 +21,7 @@ import {
   VerificationMode,
 } from './record';
 import * as moment from 'moment';
-import { mergeMap, pluck, tap } from 'rxjs/operators';
+import { mergeMap, pluck } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
 import { combineLatest } from 'rxjs';
 
@@ -98,5 +98,12 @@ export class RecordController {
       ),
       pluck('data'),
     );
+  }
+
+  @Post('device')
+  async createDevice(@Body() screen: ScreenInfo) {
+    const server: ServerInfo = await this.cacheManager.get('server');
+    if (!server) throw new HttpException('Server is not set up yet', 400);
+    return screen;
   }
 }

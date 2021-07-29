@@ -2,7 +2,7 @@ import { CacheModule, HttpModule, Module } from '@nestjs/common';
 import { RecordController } from './record.controller';
 import { SharedModule } from '../shared/shared.module';
 import { RecordService } from './record.service';
-import { ConfigModule as cfModule } from '@nestjs/config/dist/config.module';
+import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config';
 import { FoliageService } from './foliage/foliage.service';
 import * as redisStore from 'cache-manager-redis-store';
@@ -11,9 +11,9 @@ import * as redisStore from 'cache-manager-redis-store';
   imports: [
     HttpModule,
     SharedModule,
-    cfModule.forRoot(),
+    ConfigModule.forRoot(),
     CacheModule.registerAsync({
-      imports: [cfModule],
+      imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         store: redisStore,
         host: configService.get('REDIS_HOST'),

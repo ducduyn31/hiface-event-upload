@@ -1,27 +1,27 @@
 import { Module } from '@nestjs/common';
 import { SharedModule } from './shared/shared.module';
 import { RecordModule } from './record/record.module';
-import { ConfigModule } from './config/config.module';
+import { SettingsModule } from './settings/settings.module';
 import { CallbackModule } from './callback/callback.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigService, ConfigModule as cfModule } from '@nestjs/config';
-import { createConnection } from 'typeorm';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     SharedModule,
     RecordModule,
-    ConfigModule,
+    SettingsModule,
     CallbackModule,
     TypeOrmModule.forRootAsync({
-      imports: [cfModule],
+      imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
         type: 'postgres',
         host: config.get('DB_HOST'),
         port: +config.get('DB_PORT'),
-        username: config.get('DB_USERNAME'),
+        username: 'root',
         password: config.get('DB_PASSWORD'),
-        database: config.get('DB_NAME'),
+        database: 'hiface',
         entities: ['**/*.entity.{ts,js}'],
         synchronize: config.get('DB_SYNC') === 'true',
       }),
