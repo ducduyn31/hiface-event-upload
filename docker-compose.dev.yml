@@ -4,3 +4,10 @@ services:
     image: redis:latest
     ports:
     - 6379:6379
+  postgres:
+    image: postgres:latest
+    network_mode: host
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: hiface

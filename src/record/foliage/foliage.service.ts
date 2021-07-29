@@ -7,7 +7,10 @@ import { pluck } from 'rxjs/operators';
 export class FoliageService {
   constructor(private http: HttpService) {}
 
-  recognize(server: ServerInfo, photo: Express.Multer.File) {
+  recognize(
+    server: ServerInfo,
+    photo: { buffer: Buffer; originalname: string },
+  ) {
     const host = `${server.host}:8080/recognize`;
     const form = new FormData();
     form.append('image', photo.buffer, { filename: photo.originalname });

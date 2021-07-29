@@ -18,6 +18,35 @@ import {
 export class RecordService {
   constructor(private http: HttpService) {}
 
+  createPad(server: ServerInfo, pad: ScreenInfo) {
+    const host = `${server.host}:${server.port}/meglink/${pad.device_token}/login`;
+    const payload = {
+      username: pad.username,
+      password: pad.password,
+      sn_number: pad.sn_number,
+      factory_setting: pad.factory_setting,
+      device_channel: pad.device_channel,
+      app_channel: pad.app_channel,
+      rom_version: pad.rom_version,
+      app_version: pad.app_version,
+    };
+
+    const headers = RecordService.generateOAuthHeaders(
+      server,
+      pad,
+      `/meglink/${pad.device_token}/login`,
+      {},
+      payload,
+      {},
+    );
+
+    return this.http
+      .post(host, payload, {
+        headers,
+      })
+      .pipe(pluck('data'));
+  }
+
   test(server: ServerInfo, pad: ScreenInfo, data: any) {
     const host = `${server.host}:${server.port}/meglink/test`;
     const headers = RecordService.generateOAuthHeaders(
@@ -38,7 +67,10 @@ export class RecordService {
   uploadRecordPhoto(
     server: ServerInfo,
     pad: ScreenInfo,
-    photo: Express.Multer.File,
+    photo: {
+      buffer: Buffer;
+      originalname: string;
+    },
   ) {
     const host = `${server.host}:${server.port}/meglink/${pad.device_token}/file/upload`;
     const form = new FormData();
