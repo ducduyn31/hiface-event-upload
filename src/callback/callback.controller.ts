@@ -3,13 +3,14 @@ import {
   Controller,
   HttpException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
 import { ScreenInfo } from '../shared/screen-info';
 import { combineLatest } from 'rxjs';
-import { mergeMap, pluck } from 'rxjs/operators';
+import { mergeMap, pluck, tap } from 'rxjs/operators';
 import {
   LivenessType,
   PassType,
@@ -38,6 +39,7 @@ export class CallbackController {
   @MessagePattern('face-detected-event')
   onPhotoCaptured(message: KafkaMessage) {
     const { filename, devicename } = message.value as any;
+    new Logger('FaceID').log(`${filename} captured at ${devicename}`);
     this.handleEvent(filename, devicename);
     return 'OK';
   }
@@ -47,16 +49,20 @@ export class CallbackController {
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
     const pad = await this.deviceService.getPadByName(devicename);
+    new Logger('FaceID', true).log(`Found ${pad.deviceName}`);
 
     const fileBuffer = fs.readFileSync(
       path.join(this.configService.get('DATA_PATH'), filename),
     );
+    new Logger('FaceID', true).log(`Read ${filename}`);
 
     return combineLatest([
-      this.foliageService.recognize(server, {
-        buffer: fileBuffer,
-        originalname: filename,
-      }),
+      this.foliageService
+        .recognize(server, {
+          buffer: fileBuffer,
+          originalname: filename,
+        })
+        .pipe(tap(() => new Logger('FaceID', true).log('Face analyzed'))),
       this.recordService
         .uploadRecordPhoto(server, pad.toScreenInfo(), {
           buffer: fileBuffer,
@@ -68,6 +74,7 @@ export class CallbackController {
         const [result, photoPath] = value;
         if (!result.recognized)
           throw new HttpException('Face is not recognizable', 300);
+        new Logger('FaceID', true).log('Pushing event to koala.');
         return this.recordService.uploadEvent(
           server,
           pad.toScreenInfo(),
