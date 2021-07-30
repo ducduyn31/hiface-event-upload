@@ -41,12 +41,12 @@ export class RecordController {
   @UseInterceptors(FileInterceptor('photo'))
   async quick(
     @UploadedFile() file: Express.Multer.File,
-    @Body() padName: string,
+    @Body() body: { pad_name: string },
   ) {
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
-    const pad = await this.deviceService.getPadByName(padName);
+    const pad = await this.deviceService.getPadByName(body.pad_name);
 
     return combineLatest([
       this.foliageService.recognize(server, file),

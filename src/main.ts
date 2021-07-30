@@ -7,18 +7,18 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // app.connectMicroservice<MicroserviceOptions>({
-  //   transport: Transport.KAFKA,
-  //   options: {
-  //     client: {
-  //       brokers: [configService.get('KAFKA_URI')],
-  //     },
-  //     consumer: {
-  //       groupId: 'event-consumer',
-  //     },
-  //   },
-  // });
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        brokers: [configService.get('KAFKA_URI')],
+      },
+      consumer: {
+        groupId: 'event-consumer',
+      },
+    },
+  });
   await app.startAllMicroservicesAsync();
-  await app.listen(3000, '0.0.0.0');
+  await app.listen(3002, '0.0.0.0');
 }
 bootstrap();

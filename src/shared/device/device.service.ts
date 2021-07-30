@@ -16,9 +16,7 @@ export class DeviceService {
 
   async getPadByName(name: string) {
     return await this.screenRepository.findOneOrFail({
-      where: {
-        name,
-      },
+      deviceName: name,
     });
   }
 
