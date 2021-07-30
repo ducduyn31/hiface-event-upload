@@ -23,6 +23,7 @@ import { MessagePattern } from '@nestjs/microservices';
 import { KafkaMessage } from 'kafkajs';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
+import { DeviceService } from '../shared/device/device.service';
 
 @Controller('callback')
 export class CallbackController {
@@ -31,20 +32,21 @@ export class CallbackController {
     private foliageService: FoliageService,
     private recordService: RecordService,
     private configService: ConfigService,
+    private deviceService: DeviceService,
   ) {}
 
   @MessagePattern('face-detected-event')
   onPhotoCaptured(message: KafkaMessage) {
-    const { filename } = message.value as any;
-    this.handleEvent(filename);
+    const { filename, devicename } = message.value as any;
+    this.handleEvent(filename, devicename);
     return 'OK';
   }
 
-  private async handleEvent(filename: string) {
+  private async handleEvent(filename: string, devicename: string) {
     const server: ServerInfo = await this.cacheManager.get('server');
-    const pad: ScreenInfo = await this.cacheManager.get('screen');
     if (!server) throw new HttpException('Server is not set up yet', 400);
-    if (!pad) throw new HttpException('Screen is not set up yet', 400);
+
+    const pad = await this.deviceService.getPadByName(devicename);
 
     const fileBuffer = fs.readFileSync(
       path.join(this.configService.get('DATA_PATH'), filename),
@@ -56,7 +58,7 @@ export class CallbackController {
         originalname: filename,
       }),
       this.recordService
-        .uploadRecordPhoto(server, pad, {
+        .uploadRecordPhoto(server, pad.toScreenInfo(), {
           buffer: fileBuffer,
           originalname: filename,
         })
@@ -68,7 +70,7 @@ export class CallbackController {
           throw new HttpException('Face is not recognizable', 300);
         return this.recordService.uploadEvent(
           server,
-          pad,
+          pad.toScreenInfo(),
           result.person.subject_id,
           photoPath as string,
           RecognitionType.EMPLOYEE,

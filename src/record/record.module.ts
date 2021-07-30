@@ -6,6 +6,9 @@ import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config';
 import { FoliageService } from './foliage/foliage.service';
 import * as redisStore from 'cache-manager-redis-store';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Screen } from './models/screen.entity';
+import { DeviceService } from '../shared/device/device.service';
 
 @Module({
   imports: [
@@ -21,9 +24,10 @@ import * as redisStore from 'cache-manager-redis-store';
       }),
       inject: [ConfigService],
     }),
+    TypeOrmModule.forFeature([Screen]),
   ],
   controllers: [RecordController],
-  providers: [RecordService, FoliageService],
+  providers: [RecordService, FoliageService, DeviceService],
   exports: [RecordService, FoliageService],
 })
 export class RecordModule {}

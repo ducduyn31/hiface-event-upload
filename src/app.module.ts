@@ -5,6 +5,7 @@ import { SettingsModule } from './settings/settings.module';
 import { CallbackModule } from './callback/callback.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { join } from 'path';
 
 @Module({
   imports: [
@@ -22,7 +23,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         username: 'root',
         password: config.get('DB_PASSWORD'),
         database: 'hiface',
-        entities: ['**/*.entity.{ts,js}'],
+        entities: [join(__dirname, '**/*.entity.{ts,js}')],
         synchronize: config.get('DB_SYNC') === 'true',
       }),
       inject: [ConfigService],

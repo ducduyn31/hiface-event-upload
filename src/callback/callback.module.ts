@@ -6,6 +6,10 @@ import * as redisStore from 'cache-manager-redis-store';
 import { FoliageService } from '../record/foliage/foliage.service';
 import { RecordService } from '../record/record.service';
 import { RecordModule } from '../record/record.module';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Screen } from '../record/models/screen.entity';
+import { SharedModule } from '../shared/shared.module';
+import { DeviceService } from '../shared/device/device.service';
 
 @Module({
   imports: [
@@ -21,8 +25,10 @@ import { RecordModule } from '../record/record.module';
       inject: [ConfigService],
     }),
     RecordModule,
+    SharedModule,
+    TypeOrmModule.forFeature([Screen]),
   ],
   controllers: [CallbackController],
-  providers: [FoliageService, RecordService],
+  providers: [FoliageService, RecordService, DeviceService],
 })
 export class CallbackModule {}

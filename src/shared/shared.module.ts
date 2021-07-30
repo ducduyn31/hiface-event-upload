@@ -1,9 +1,12 @@
-import { CACHE_MANAGER, CacheModule, Module } from '@nestjs/common';
+import { CACHE_MANAGER, CacheModule, HttpModule, Module } from '@nestjs/common';
 import { ScreenInfo } from './screen-info';
 import { ServerInfo } from './server-info';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
 import { Cache } from 'cache-manager';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Screen } from '../record/models/screen.entity';
+import { DeviceService } from './device/device.service';
 
 @Module({
   imports: [
@@ -17,6 +20,8 @@ import { Cache } from 'cache-manager';
       }),
       inject: [ConfigService],
     }),
+    TypeOrmModule.forFeature([Screen]),
+    HttpModule,
   ],
   providers: [
     {
@@ -37,6 +42,7 @@ import { Cache } from 'cache-manager';
       },
       inject: [CACHE_MANAGER],
     },
+    DeviceService,
   ],
   exports: [
     {
@@ -47,6 +53,7 @@ import { Cache } from 'cache-manager';
       provide: ServerInfo,
       useExisting: ServerInfo,
     },
+    DeviceService,
   ],
 })
 export class SharedModule {}

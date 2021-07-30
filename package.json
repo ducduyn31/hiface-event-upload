@@ -34,12 +34,12 @@
     "kafkajs": "^1.15.0",
     "md5": "^2.3.0",
     "moment": "^2.29.1",
+    "nanoid": "^3.1.23",
     "pg": "^8.7.1",
     "reflect-metadata": "^0.1.13",
     "rimraf": "^3.0.2",
     "rxjs": "^6.6.6",
-    "typeorm": "^0.2.34",
-    "uuid": "^8.3.2"
+    "typeorm": "^0.2.34"
   },
   "devDependencies": {
     "@nestjs/cli": "^7.6.0",

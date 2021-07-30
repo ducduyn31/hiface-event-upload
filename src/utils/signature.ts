@@ -3,6 +3,9 @@ import { ScreenInfo } from '../shared/screen-info';
 import { createHash } from 'crypto';
 import * as md5 from 'md5';
 
+const encodeURL = (str: string) =>
+  encodeURIComponent(str).replaceAll('!', '%21');
+
 export const generateSignature = (
   serverInfo: ServerInfo,
   padInfo: ScreenInfo,
@@ -24,28 +27,25 @@ export const generateSignature = (
   const url = serverInfo.host + requestUrl;
 
   const payload = {
-    method: encodeURIComponent(method),
-    url: encodeURIComponent(url),
-    [encodeURIComponent('OAuth-Nonce')]: encodeURIComponent(oauthNonce),
-    [encodeURIComponent('OAuth-Timestamp')]: encodeURIComponent(
-      String(oauthTimestamp),
-    ),
-    [encodeURIComponent('OAuth-Token')]: encodeURIComponent(oauthToken),
-    [encodeURIComponent('OAuth-Signature-Method')]:
-      encodeURIComponent(oauthSignatureMethod),
-    [encodeURIComponent('OAuth-Version')]: encodeURIComponent(oauthVersion),
-    [encodeURIComponent('user_secret')]: encodeURIComponent(userSecret),
+    method: encodeURL(method),
+    url: encodeURL(url),
+    [encodeURL('OAuth-Nonce')]: encodeURL(oauthNonce),
+    [encodeURL('OAuth-Timestamp')]: encodeURL(String(oauthTimestamp)),
+    [encodeURL('OAuth-Token')]: encodeURL(oauthToken),
+    [encodeURL('OAuth-Signature-Method')]: encodeURL(oauthSignatureMethod),
+    [encodeURL('OAuth-Version')]: encodeURL(oauthVersion),
+    [encodeURL('user_secret')]: encodeURL(userSecret),
   };
 
   Object.entries(query).forEach(([key, value]) => {
     if (typeof value === 'string') {
-      payload[encodeURIComponent(key)] = encodeURIComponent(value);
+      payload[encodeURL(key)] = encodeURL(value);
     }
   });
 
   Object.entries(form).forEach(([key, value]) => {
     if (typeof value === 'string') {
-      payload[encodeURIComponent(key)] = encodeURIComponent(value);
+      payload[encodeURL(key)] = encodeURL(value);
     }
   });
 

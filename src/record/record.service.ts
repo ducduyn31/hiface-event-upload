@@ -18,35 +18,6 @@ import {
 export class RecordService {
   constructor(private http: HttpService) {}
 
-  createPad(server: ServerInfo, pad: ScreenInfo) {
-    const host = `${server.host}:${server.port}/meglink/${pad.device_token}/login`;
-    const payload = {
-      username: pad.username,
-      password: pad.password,
-      sn_number: pad.sn_number,
-      factory_setting: pad.factory_setting,
-      device_channel: pad.device_channel,
-      app_channel: pad.app_channel,
-      rom_version: pad.rom_version,
-      app_version: pad.app_version,
-    };
-
-    const headers = RecordService.generateOAuthHeaders(
-      server,
-      pad,
-      `/meglink/${pad.device_token}/login`,
-      {},
-      payload,
-      {},
-    );
-
-    return this.http
-      .post(host, payload, {
-        headers,
-      })
-      .pipe(pluck('data'));
-  }
-
   test(server: ServerInfo, pad: ScreenInfo, data: any) {
     const host = `${server.host}:${server.port}/meglink/test`;
     const headers = RecordService.generateOAuthHeaders(
@@ -145,7 +116,7 @@ export class RecordService {
       .pipe(pluck('data'));
   }
 
-  private static generateOAuthHeaders(
+  public static generateOAuthHeaders(
     server: ServerInfo,
     pad: ScreenInfo,
     url: string,
@@ -155,6 +126,7 @@ export class RecordService {
   ): Record<string, string> {
     const nonce = uuid.v1();
     const now = moment().unix();
+
     return {
       'OAuth-Version': '1.0',
       'OAuth-Token': pad.user_token || pad.device_token,
