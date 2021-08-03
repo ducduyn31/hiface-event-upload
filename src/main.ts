@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -19,6 +20,8 @@ async function bootstrap() {
     },
   });
   await app.startAllMicroservicesAsync();
-  await app.listen(3002, '0.0.0.0');
+  await app.listen(3000, () =>
+    new Logger('NestApplication').log('Server started on port 3000'),
+  );
 }
 bootstrap();

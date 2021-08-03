@@ -8,7 +8,6 @@ import {
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
-import { ScreenInfo } from '../shared/screen-info';
 import { combineLatest } from 'rxjs';
 import { mergeMap, pluck, tap } from 'rxjs/operators';
 import {
@@ -69,26 +68,30 @@ export class CallbackController {
           originalname: filename,
         })
         .pipe(pluck('data'), pluck('key')),
-    ]).pipe(
-      mergeMap((value) => {
-        const [result, photoPath] = value;
-        if (!result.recognized)
-          throw new HttpException('Face is not recognizable', 300);
-        new Logger('FaceID', true).log('Pushing event to koala.');
-        return this.recordService.uploadEvent(
-          server,
-          pad.toScreenInfo(),
-          result.person.subject_id,
-          photoPath as string,
-          RecognitionType.EMPLOYEE,
-          VerificationMode.FACE,
-          PassType.PASS,
-          +result.person.confidence,
-          +result.person.confidence,
-          LivenessType.NOT_DETECTED,
-          moment().unix(),
-        );
-      }),
-    );
+    ])
+      .pipe(
+        mergeMap((value) => {
+          const [result, photoPath] = value;
+          if (!result.recognized) {
+            new Logger('FaceId').log('Face is unrecognizable');
+            throw new HttpException('Face is not recognizable', 300);
+          }
+          new Logger('FaceID', true).log('Pushing event to koala.');
+          return this.recordService.uploadEvent(
+            server,
+            pad.toScreenInfo(),
+            result.person.subject_id,
+            photoPath as string,
+            RecognitionType.EMPLOYEE,
+            VerificationMode.FACE,
+            PassType.PASS,
+            +result.person.confidence,
+            +result.person.confidence,
+            LivenessType.NOT_DETECTED,
+            moment().unix(),
+          );
+        }),
+      )
+      .toPromise();
   }
 }
