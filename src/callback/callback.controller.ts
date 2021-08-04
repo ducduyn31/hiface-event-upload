@@ -8,8 +8,8 @@ import {
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
-import { combineLatest } from 'rxjs';
-import { mergeMap, pluck, tap } from 'rxjs/operators';
+import { combineLatest, of } from 'rxjs';
+import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
 import {
   LivenessType,
   PassType,
@@ -57,24 +57,35 @@ export class CallbackController {
 
     return combineLatest([
       this.foliageService
-        .recognize(server, {
-          buffer: fileBuffer,
-          originalname: filename,
-        })
-        .pipe(tap(() => new Logger('FaceID', true).log('Face analyzed'))),
+        .recognize(
+          server,
+          {
+            buffer: fileBuffer,
+            originalname: filename,
+          },
+          false,
+        )
+        .pipe(
+          tap(() => new Logger('FaceID', true).log('Face analyzed')),
+          catchError(() => of({ recognized: false })),
+        ),
       this.recordService
         .uploadRecordPhoto(server, pad.toScreenInfo(), {
           buffer: fileBuffer,
           originalname: filename,
         })
-        .pipe(pluck('data'), pluck('key')),
+        .pipe(
+          pluck('data'),
+          pluck('key'),
+          catchError(() => of(null)),
+        ),
     ])
       .pipe(
         mergeMap((value) => {
           const [result, photoPath] = value;
-          if (!result.recognized) {
+          if (!result.recognized || !photoPath) {
             new Logger('FaceId').log('Face is unrecognizable');
-            throw new HttpException('Face is not recognizable', 300);
+            return of(null);
           }
           new Logger('FaceID', true).log('Pushing event to koala.');
           return this.recordService.uploadEvent(
