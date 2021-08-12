@@ -9,6 +9,7 @@ import * as redisStore from 'cache-manager-redis-store';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Screen } from './models/screen.entity';
 import { DeviceService } from '../shared/device/device.service';
+import { KoalaService } from '../shared/koala/koala.service';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { DeviceService } from '../shared/device/device.service';
     TypeOrmModule.forFeature([Screen]),
   ],
   controllers: [RecordController],
-  providers: [RecordService, FoliageService, DeviceService],
+  providers: [RecordService, FoliageService, DeviceService, KoalaService],
   exports: [RecordService, FoliageService],
 })
 export class RecordModule {}

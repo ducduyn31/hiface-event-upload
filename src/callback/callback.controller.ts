@@ -7,7 +7,6 @@ import {
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
-import { ScreenInfo } from '../shared/screen-info';
 import { combineLatest } from 'rxjs';
 import { mergeMap, pluck } from 'rxjs/operators';
 import {
@@ -53,10 +52,14 @@ export class CallbackController {
     );
 
     return combineLatest([
-      this.foliageService.recognize(server, {
-        buffer: fileBuffer,
-        originalname: filename,
-      }),
+      this.foliageService.recognize(
+        server,
+        {
+          buffer: fileBuffer,
+          originalname: filename,
+        },
+        `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
+      ),
       this.recordService
         .uploadRecordPhoto(server, pad.toScreenInfo(), {
           buffer: fileBuffer,

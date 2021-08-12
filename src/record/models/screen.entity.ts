@@ -6,6 +6,9 @@ export class Screen {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ name: 'company_id', nullable: false })
+  companyId: number;
+
   @Column({ name: 'token', unique: true, nullable: false })
   deviceToken: string;
 

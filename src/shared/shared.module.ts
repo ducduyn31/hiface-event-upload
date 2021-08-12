@@ -7,6 +7,7 @@ import { Cache } from 'cache-manager';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Screen } from '../record/models/screen.entity';
 import { DeviceService } from './device/device.service';
+import { KoalaService } from './koala/koala.service';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DeviceService } from './device/device.service';
       inject: [CACHE_MANAGER],
     },
     DeviceService,
+    KoalaService,
   ],
   exports: [
     {

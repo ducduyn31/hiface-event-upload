@@ -10,6 +10,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Screen } from '../record/models/screen.entity';
 import { SharedModule } from '../shared/shared.module';
 import { DeviceService } from '../shared/device/device.service';
+import { KoalaService } from '../shared/koala/koala.service';
 
 @Module({
   imports: [
@@ -29,6 +30,6 @@ import { DeviceService } from '../shared/device/device.service';
     TypeOrmModule.forFeature([Screen]),
   ],
   controllers: [CallbackController],
-  providers: [FoliageService, RecordService, DeviceService],
+  providers: [FoliageService, RecordService, DeviceService, KoalaService],
 })
 export class CallbackModule {}

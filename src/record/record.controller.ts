@@ -3,13 +3,12 @@ import {
   CACHE_MANAGER,
   Controller,
   HttpException,
-  Inject,
+  Inject, Logger,
   Post,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
-import { ScreenInfo } from '../shared/screen-info';
 import { RecordService } from './record.service';
 import { Cache } from 'cache-manager';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -21,12 +20,13 @@ import {
   VerificationMode,
 } from './record';
 import * as moment from 'moment';
-import { mergeMap, pluck } from 'rxjs/operators';
+import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
-import { combineLatest } from 'rxjs';
+import { combineLatest, of } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
 import { customAlphabet } from 'nanoid';
 import { DeviceService } from '../shared/device/device.service';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('record')
 export class RecordController {
@@ -35,42 +35,78 @@ export class RecordController {
     private recordService: RecordService,
     private deviceService: DeviceService,
     private foliageService: FoliageService,
-  ) {}
+    private configService: ConfigService,
+  ) {
+  }
 
   @Post('quick')
   @UseInterceptors(FileInterceptor('photo'))
   async quick(
     @UploadedFile() file: Express.Multer.File,
-    @Body() padName: string,
+    @Body() payload: any,
   ) {
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
-    const pad = await this.deviceService.getPadByName(padName);
+    let pad;
+    const { pad_name: padName } = payload;
+    try {
+      pad = await this.deviceService.getPadByName(padName);
+    } catch (e) {
+      new Logger('EventUpload').error(e.message);
+      throw new HttpException('Failed to load pad', 400);
+    }
 
     return combineLatest([
-      this.foliageService.recognize(server, file),
+      this.foliageService
+        .recognize(
+          server,
+          file,
+          `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
+        )
+        .pipe(
+          catchError(() =>
+            of(
+              new HttpException(
+                'failed to recognize via recognize service',
+                400,
+              ),
+            ),
+          ),
+        ),
       this.recordService
         .uploadRecordPhoto(server, pad.toScreenInfo(), file)
-        .pipe(pluck('data'), pluck('key')),
+        .pipe(
+          pluck('data'),
+          pluck('key'),
+          catchError(() =>
+            of(new HttpException('failed to upload event image', 400)),
+          ),
+        ),
     ]).pipe(
       mergeMap((value) => {
         const [result, photoPath] = value;
         if (!result.recognized)
           throw new HttpException('Face is not recognizable', 300);
-        return this.recordService.uploadEvent(
-          server,
-          pad.toScreenInfo(),
-          result.person.subject_id,
-          photoPath as string,
-          RecognitionType.EMPLOYEE,
-          VerificationMode.FACE,
-          PassType.PASS,
-          +result.person.confidence,
-          +result.person.confidence,
-          LivenessType.NOT_DETECTED,
-          moment().unix(),
-        );
+        return this.recordService
+          .uploadEvent(
+            server,
+            pad.toScreenInfo(),
+            result.person.subject_id,
+            photoPath as string,
+            RecognitionType.EMPLOYEE,
+            VerificationMode.FACE,
+            PassType.PASS,
+            +result.person.confidence,
+            +result.person.confidence,
+            LivenessType.NOT_DETECTED,
+            moment().unix(),
+          )
+          .pipe(
+            catchError(() =>
+              of(new HttpException('failed to upload event', 400)),
+            ),
+          );
       }),
     );
   }

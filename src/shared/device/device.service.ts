@@ -1,4 +1,4 @@
-import { HttpService, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../server-info';
 import { ScreenInfo } from '../screen-info';
 import { pluck, tap } from 'rxjs/operators';
@@ -6,19 +6,22 @@ import { RecordService } from '../../record/record.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Screen } from '../../record/models/screen.entity';
 import { Repository } from 'typeorm';
+import { KoalaService } from '../koala/koala.service';
 
 @Injectable()
 export class DeviceService {
   constructor(
     private http: HttpService,
+    private koalaService: KoalaService,
     @InjectRepository(Screen) private screenRepository: Repository<Screen>,
   ) {}
 
   async getPadByName(name: string) {
+    if (!name) {
+      throw new HttpException('Please provide pad name', 400);
+    }
     return await this.screenRepository.findOneOrFail({
-      where: {
-        name,
-      },
+      deviceName: name,
     });
   }
 
@@ -66,20 +69,30 @@ export class DeviceService {
           },
         } = response;
 
-        this.screenRepository.insert({
-          deviceName: pad.app_channel,
-          deviceToken: pad.device_token,
-          appChannel: pad.app_channel,
-          appVersion: pad.app_version,
-          meglinkVersion: meglink_version,
-          mqttPassword: mqtt_password,
-          mqttUsername: mqtt_username,
-          romChannel: pad.device_channel,
-          romVersion: pad.rom_version,
-          serial: pad.sn_number,
-          userSecret: secret,
-          userToken: token,
-        });
+        const { username, password } = pad;
+
+        this.koalaService
+          .getCompanyId(server, username, password)
+          .pipe(
+            tap((companyId) => {
+              this.screenRepository.insert({
+                deviceName: pad.app_channel,
+                companyId: companyId,
+                deviceToken: pad.device_token,
+                appChannel: pad.app_channel,
+                appVersion: pad.app_version,
+                meglinkVersion: meglink_version,
+                mqttPassword: mqtt_password,
+                mqttUsername: mqtt_username,
+                romChannel: pad.device_channel,
+                romVersion: pad.rom_version,
+                serial: pad.sn_number,
+                userSecret: secret,
+                userToken: token,
+              });
+            }),
+          )
+          .subscribe();
       }),
     );
   }
