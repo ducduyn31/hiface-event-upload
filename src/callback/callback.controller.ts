@@ -3,6 +3,7 @@ import {
   Controller,
   HttpException,
   Inject,
+  Logger,
 } from '@nestjs/common';
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
@@ -37,6 +38,7 @@ export class CallbackController {
   @MessagePattern('face-detected-event')
   onPhotoCaptured(message: KafkaMessage) {
     const { filename, devicename } = message.value as any;
+    new Logger('FaceID').log(`${filename} captured at ${devicename}`);
     this.handleEvent(filename, devicename);
     return 'OK';
   }
@@ -46,10 +48,12 @@ export class CallbackController {
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
     const pad = await this.deviceService.getPadByName(devicename);
+    new Logger('FaceID', true).log(`Found ${pad.deviceName}`);
 
     const fileBuffer = fs.readFileSync(
       path.join(this.configService.get('DATA_PATH'), filename),
     );
+    new Logger('FaceID', true).log(`Read ${filename}`);
 
     return combineLatest([
       this.foliageService.recognize(

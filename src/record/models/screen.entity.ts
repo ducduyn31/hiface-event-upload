@@ -15,16 +15,16 @@ export class Screen {
   @Column({ name: 'name' })
   deviceName: string;
 
-  @Column({ name: 'app_channel' })
+  @Column({ name: 'app_channel', nullable: true })
   appChannel: string;
 
-  @Column({ name: 'app_version' })
+  @Column({ name: 'app_version', nullable: true })
   appVersion: string;
 
-  @Column({ name: 'rom_channel' })
+  @Column({ name: 'rom_channel', nullable: true })
   romChannel: string;
 
-  @Column({ name: 'rom_version' })
+  @Column({ name: 'rom_version', nullable: true })
   romVersion: string;
 
   @Column({ name: 'user_token', unique: true })
@@ -33,16 +33,16 @@ export class Screen {
   @Column({ name: 'user_secret' })
   userSecret: string;
 
-  @Column({ name: 'mqtt_username', unique: true })
+  @Column({ name: 'mqtt_username', unique: true, nullable: true })
   mqttUsername: string;
 
-  @Column({ name: 'mqtt_password' })
+  @Column({ name: 'mqtt_password', nullable: true })
   mqttPassword: string;
 
   @Column({ name: 'sn_number', unique: true })
   serial: string;
 
-  @Column({ name: 'meglink_version' })
+  @Column({ name: 'meglink_version', nullable: true })
   meglinkVersion: string;
 
   toScreenInfo(): ScreenInfo {

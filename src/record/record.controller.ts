@@ -3,7 +3,8 @@ import {
   CACHE_MANAGER,
   Controller,
   HttpException,
-  Inject, Logger,
+  Inject,
+  Logger,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -20,7 +21,7 @@ import {
   VerificationMode,
 } from './record';
 import * as moment from 'moment';
-import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
+import { catchError, mergeMap, pluck } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
 import { combineLatest, of } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
@@ -36,15 +37,11 @@ export class RecordController {
     private deviceService: DeviceService,
     private foliageService: FoliageService,
     private configService: ConfigService,
-  ) {
-  }
+  ) {}
 
   @Post('quick')
   @UseInterceptors(FileInterceptor('photo'))
-  async quick(
-    @UploadedFile() file: Express.Multer.File,
-    @Body() payload: any,
-  ) {
+  async quick(@UploadedFile() file: Express.Multer.File, @Body() payload: any) {
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
