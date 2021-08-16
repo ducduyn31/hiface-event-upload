@@ -17,12 +17,12 @@ import { join } from 'path';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (config: ConfigService) => ({
-        type: 'postgres',
+        type: 'mysql',
         host: config.get('DB_HOST'),
         port: +config.get('DB_PORT'),
-        username: 'root',
+        username: config.get('DB_USER'),
         password: config.get('DB_PASSWORD'),
-        database: 'hiface',
+        database: config.get('DB_NAME'),
         entities: [join(__dirname, '**/*.entity.{ts,js}')],
         synchronize: config.get('DB_SYNC') === 'true',
       }),

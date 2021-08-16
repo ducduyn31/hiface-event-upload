@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 import { ScreenInfo } from '../../shared/screen-info';
 
-@Entity()
+@Entity('screen')
 export class Screen {
   @PrimaryGeneratedColumn()
   id: number;
@@ -12,7 +12,7 @@ export class Screen {
   @Column({ name: 'token', unique: true, nullable: false })
   deviceToken: string;
 
-  @Column({ name: 'name' })
+  @Column({ name: 'camera_name' })
   deviceName: string;
 
   @Column({ name: 'app_channel', nullable: true })

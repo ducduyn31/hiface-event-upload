@@ -70,7 +70,7 @@ export class RecordController {
         )
         .pipe(
           catchError(() =>
-            of(
+            throwError(
               new HttpException(
                 'failed to recognize via recognize service',
                 400,
@@ -186,7 +186,7 @@ export class RecordController {
       client_version_list: '',
     };
 
-    return this.deviceService.createPadAndSave(server, pad).pipe(
+    return this.deviceService.createPad(server, pad).pipe(
       tap((r) => {
         of(true)
           .pipe(
@@ -219,19 +219,19 @@ export class RecordController {
     return this.deviceService.getAllPads().then((results) =>
       results.map((device) => ({
         id: device.id,
-        name: device.deviceName,
+        name: device.appChannel,
         token: device.deviceToken,
       })),
     );
   }
 
-  @Delete('devices')
-  removeAllPads() {
-    return this.deviceService.truncatePads();
-  }
-
-  @Delete('device/:id')
-  removePad(@Param('id') id) {
-    return this.deviceService.removePad(id);
-  }
+  // @Delete('devices')
+  // removeAllPads() {
+  //   return this.deviceService.truncatePads();
+  // }
+  //
+  // @Delete('device/:id')
+  // removePad(@Param('id') id) {
+  //   return this.deviceService.removePad(id);
+  // }
 }

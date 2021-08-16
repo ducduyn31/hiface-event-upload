@@ -5,7 +5,6 @@ import {
   Get,
   Inject,
   OnModuleInit,
-  Put,
 } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
 import { Cache } from 'cache-manager';
@@ -18,7 +17,7 @@ export class SettingsController implements OnModuleInit {
     private config: ConfigService,
   ) {}
 
-  @Put('server')
+  // @Put('server')
   updateServer(@Body() server: ServerInfo) {
     this.cacheManager.set('server', server, { ttl: 0 });
     return server;

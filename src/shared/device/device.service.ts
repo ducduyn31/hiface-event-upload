@@ -1,4 +1,4 @@
-import { HttpException, HttpService, Injectable } from '@nestjs/common';
+import { HttpException, HttpService, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../server-info';
 import { ScreenInfo } from '../screen-info';
 import { catchError, pluck, tap } from 'rxjs/operators';
@@ -74,7 +74,7 @@ export class DeviceService {
       .pipe(
         pluck('data'),
         catchError(() =>
-          of(
+          throwError(
             new HttpException(
               `Failed to config ${pad.device_token} pad on server`,
               400,
@@ -127,6 +127,11 @@ export class DeviceService {
   createPadAndSave(server: ServerInfo, pad: ScreenInfo) {
     return this.createPad(server, pad).pipe(
       tap((response) => {
+        new Logger('Create Pad').log(
+          `Create pad ${pad.device_token} resulted in: ${JSON.stringify(
+            response,
+          )}`,
+        );
         if (response.code !== 100000) return;
 
         const {
