@@ -21,11 +21,7 @@ async function bootstrap() {
   });
   await app.startAllMicroservicesAsync();
   await app.listen(3000, () =>
-<<<<<<< HEAD
-    new Logger('NestApplication').log('Started on port 3000'),
-=======
     new Logger('NestApplication').log('Server started on port 3000'),
->>>>>>> 3b19ca49f0f4891e13a8a8fcf26e1c364f922194
   );
 }
 bootstrap();

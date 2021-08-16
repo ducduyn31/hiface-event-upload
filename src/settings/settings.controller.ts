@@ -4,14 +4,19 @@ import {
   Controller,
   Get,
   Inject,
+  OnModuleInit,
   Put,
 } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
 import { Cache } from 'cache-manager';
+import { ConfigService } from '@nestjs/config';
 
 @Controller('config')
-export class SettingsController {
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
+export class SettingsController implements OnModuleInit {
+  constructor(
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private config: ConfigService,
+  ) {}
 
   @Put('server')
   updateServer(@Body() server: ServerInfo) {
@@ -22,5 +27,13 @@ export class SettingsController {
   @Get('server')
   getServer() {
     return this.cacheManager.get('server');
+  }
+
+  onModuleInit(): any {
+    this.updateServer({
+      host: this.config.get('KOALA_HOST'),
+      port: this.config.get('KOALA_PORT'),
+      user_secret: this.config.get('SECRET_TOKEN'),
+    });
   }
 }

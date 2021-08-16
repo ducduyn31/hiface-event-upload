@@ -2,9 +2,12 @@ import {
   Body,
   CACHE_MANAGER,
   Controller,
+  Delete,
+  Get,
   HttpException,
   Inject,
   Logger,
+  Param,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -21,7 +24,7 @@ import {
   VerificationMode,
 } from './record';
 import * as moment from 'moment';
-import { catchError, mergeMap, pluck } from 'rxjs/operators';
+import { catchError, delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
 import { combineLatest, of } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
@@ -46,9 +49,13 @@ export class RecordController {
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
     let pad;
-    const { pad_name: padName } = payload;
+    const { pad_name: padName, token } = payload;
     try {
-      pad = await this.deviceService.getPadByName(padName);
+      if (token) {
+        pad = await this.deviceService.getPadByToken(token);
+      } else {
+        pad = await this.deviceService.getPadByName(padName);
+      }
     } catch (e) {
       new Logger('EventUpload').error(e.message);
       throw new HttpException('Failed to load pad', 400);
@@ -154,7 +161,7 @@ export class RecordController {
 
     const generatedSN = `M014200${twoNumberGenerator()}201${threeNumberGenerator()}1${threeNumberGenerator()}`;
 
-    return this.deviceService.createPadAndSave(server, {
+    const pad = {
       username: newDeviceRequest.username,
       password: newDeviceRequest.password,
       sn_number: generatedSN,
@@ -167,6 +174,54 @@ export class RecordController {
       user_token: '',
       user_secret: '',
       client_version_list: '',
-    });
+    };
+
+    return this.deviceService.createPadAndSave(server, pad).pipe(
+      tap((r) => {
+        of(true)
+          .pipe(
+            delay(1000),
+            mergeMap(() =>
+              this.deviceService.configPad(server, {
+                ...pad,
+                user_token: r.data.token,
+                user_secret: r.data.secret,
+              }),
+            ),
+          )
+          .subscribe((resp) => {
+            if (resp.code !== 100000)
+              new Logger('ConfigPad').error(`Failed to config pad: ${resp}`);
+          });
+      }),
+      map((res) => ({
+        code: res.code,
+        data: {
+          mqtt_address: res.data.mqtt_address,
+          token: res.data.mqtt_client_id,
+        },
+      })),
+    );
+  }
+
+  @Get('devices')
+  listPads() {
+    return this.deviceService.getAllPads().then((results) =>
+      results.map((device) => ({
+        id: device.id,
+        name: device.deviceName,
+        token: device.deviceToken,
+      })),
+    );
+  }
+
+  @Delete('devices')
+  removeAllPads() {
+    return this.deviceService.truncatePads();
+  }
+
+  @Delete('device/:id')
+  removePad(@Param('id') id) {
+    return this.deviceService.removePad(id);
   }
 }
