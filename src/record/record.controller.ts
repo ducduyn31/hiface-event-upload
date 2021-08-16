@@ -26,7 +26,7 @@ import {
 import * as moment from 'moment';
 import { catchError, delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
-import { combineLatest, of } from 'rxjs';
+import { combineLatest, of, throwError } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
 import { customAlphabet } from 'nanoid';
 import { DeviceService } from '../shared/device/device.service';
@@ -83,8 +83,13 @@ export class RecordController {
         .pipe(
           pluck('data'),
           pluck('key'),
-          catchError(() =>
-            of(new HttpException('failed to upload event image', 400)),
+          catchError((err) =>
+            throwError(
+              new HttpException(
+                `failed to upload event image: ${err.message}`,
+                400,
+              ),
+            ),
           ),
         ),
     ]).pipe(
@@ -107,8 +112,13 @@ export class RecordController {
             moment().unix(),
           )
           .pipe(
-            catchError(() =>
-              of(new HttpException('failed to upload event', 400)),
+            catchError((err) =>
+              throwError(
+                new HttpException(
+                  `failed to upload event: ${err.message}`,
+                  400,
+                ),
+              ),
             ),
           );
       }),

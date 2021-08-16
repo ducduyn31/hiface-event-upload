@@ -1,7 +1,7 @@
 import { HttpException, HttpService, Injectable } from '@nestjs/common';
 import { ServerInfo } from '../server-info';
 import { catchError, pluck } from 'rxjs/operators';
-import { Observable, of } from 'rxjs';
+import { Observable, throwError } from 'rxjs';
 
 @Injectable()
 export class KoalaService {
@@ -31,7 +31,9 @@ export class KoalaService {
         pluck('data'),
         pluck('company'),
         pluck('id'),
-        catchError(() => of(new HttpException('failed to login.', 400))),
+        catchError((err) =>
+          throwError(new HttpException(`Failed to login: ${err.message}`, 400)),
+        ),
       );
   }
 }

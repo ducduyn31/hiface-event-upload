@@ -7,7 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Screen } from '../../record/models/screen.entity';
 import { Repository } from 'typeorm';
 import { KoalaService } from '../koala/koala.service';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import * as moment from 'moment';
 import { VerificationMode } from '../../record/record';
 
@@ -16,16 +16,15 @@ export class DeviceService {
   constructor(
     private http: HttpService,
     private koalaService: KoalaService,
-    @InjectRepository(Screen) private screenRepository: Repository<Screen>
-  ) {
-  }
+    @InjectRepository(Screen) private screenRepository: Repository<Screen>,
+  ) {}
 
   async getPadByName(name: string) {
     if (!name) {
       throw new HttpException('Please provide pad name', 400);
     }
     return await this.screenRepository.findOneOrFail({
-      deviceName: name
+      deviceName: name,
     });
   }
 
@@ -34,7 +33,7 @@ export class DeviceService {
       throw new HttpException('Please provide pad token', 400);
     }
     return await this.screenRepository.findOneOrFail({
-      deviceToken: token
+      deviceToken: token,
     });
   }
 
@@ -58,7 +57,7 @@ export class DeviceService {
       'persty.location': pad.app_channel,
       'pass.face.recognition_mode': VerificationMode.FACE,
       'pass.verification_mode': VerificationMode.FACE,
-      'sys.reboot_schedule': '5/02:00'
+      'sys.reboot_schedule': '5/02:00',
     };
     const configHeaders = RecordService.generateOAuthHeaders(
       server,
@@ -66,11 +65,11 @@ export class DeviceService {
       `/meglink/${pad.device_token}/config`,
       {},
       configPayload,
-      {}
+      {},
     );
     return this.http
       .post(configHost, configPayload, {
-        headers: configHeaders
+        headers: configHeaders,
       })
       .pipe(
         pluck('data'),
@@ -78,10 +77,10 @@ export class DeviceService {
           of(
             new HttpException(
               `Failed to config ${pad.device_token} pad on server`,
-              400
-            )
-          )
-        )
+              400,
+            ),
+          ),
+        ),
       );
   }
 
@@ -96,7 +95,7 @@ export class DeviceService {
       device_channel: pad.device_channel,
       app_channel: pad.app_channel,
       rom_version: pad.rom_version,
-      app_version: pad.app_version
+      app_version: pad.app_version,
     };
 
     const loginHeaders = RecordService.generateOAuthHeaders(
@@ -105,18 +104,23 @@ export class DeviceService {
       `/meglink/${pad.device_token}/login`,
       {},
       loginPayload,
-      {}
+      {},
     );
 
     return this.http
       .post(loginHost, loginPayload, {
-        headers: loginHeaders
+        headers: loginHeaders,
       })
       .pipe(
         pluck('data'),
-        catchError(() =>
-          of(new HttpException('Failed to create pad on server', 400))
-        )
+        catchError((err) =>
+          throwError(
+            new HttpException(
+              `Failed to create pad on server: ${err.message}`,
+              400,
+            ),
+          ),
+        ),
       );
   }
 
@@ -131,8 +135,8 @@ export class DeviceService {
             mqtt_username,
             mqtt_password,
             secret,
-            token
-          }
+            token,
+          },
         } = response;
 
         const { username, password } = pad;
@@ -154,12 +158,12 @@ export class DeviceService {
                 romVersion: pad.rom_version,
                 serial: pad.sn_number,
                 userSecret: secret,
-                userToken: token
+                userToken: token,
               });
-            })
+            }),
           )
           .subscribe();
-      })
+      }),
     );
   }
 }
