@@ -2,12 +2,10 @@ import {
   Body,
   CACHE_MANAGER,
   Controller,
-  Delete,
   Get,
   HttpException,
   Inject,
   Logger,
-  Param,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -69,14 +67,15 @@ export class RecordController {
           `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
         )
         .pipe(
-          catchError(() =>
-            throwError(
+          catchError((err) => {
+            new Logger('FoliageService').error(err.message);
+            return throwError(
               new HttpException(
-                'failed to recognize via recognize service',
+                `failed to recognize via recognize service`,
                 400,
               ),
-            ),
-          ),
+            );
+          }),
         ),
       this.recordService
         .uploadRecordPhoto(server, pad.toScreenInfo(), file)
@@ -125,7 +124,6 @@ export class RecordController {
     );
   }
 
-  @Post()
   @UseInterceptors(FileInterceptor('event_photo'))
   async post(
     @Body() record: Record & { pad_name: string },

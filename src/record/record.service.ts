@@ -4,7 +4,7 @@ import { ScreenInfo } from '../shared/screen-info';
 import * as uuid from 'uuid';
 import * as moment from 'moment';
 import { generateSignature } from '../utils/signature';
-import { pluck } from 'rxjs/operators';
+import { map, pluck } from 'rxjs/operators';
 import * as FormData from 'form-data';
 import * as md5 from 'md5';
 import {
@@ -68,7 +68,13 @@ export class RecordService {
           ...form.getHeaders(),
         },
       })
-      .pipe(pluck('data'));
+      .pipe(
+        pluck('data'),
+        map((resp) => {
+          if (resp.code !== 100000) throw new Error(resp.msg);
+          return resp;
+        }),
+      );
   }
 
   uploadEvent(
@@ -113,7 +119,13 @@ export class RecordService {
       .post(host, payload, {
         headers,
       })
-      .pipe(pluck('data'));
+      .pipe(
+        pluck('data'),
+        map((resp) => {
+          if (resp.code !== 100000) throw new Error(resp.msg);
+          return resp;
+        }),
+      );
   }
 
   public static generateOAuthHeaders(

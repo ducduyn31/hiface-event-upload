@@ -1,13 +1,13 @@
 import { HttpException, HttpService, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../server-info';
 import { ScreenInfo } from '../screen-info';
-import { catchError, pluck, tap } from 'rxjs/operators';
+import { catchError, map, pluck, tap } from 'rxjs/operators';
 import { RecordService } from '../../record/record.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Screen } from '../../record/models/screen.entity';
 import { Repository } from 'typeorm';
 import { KoalaService } from '../koala/koala.service';
-import { of, throwError } from 'rxjs';
+import { throwError } from 'rxjs';
 import * as moment from 'moment';
 import { VerificationMode } from '../../record/record';
 
@@ -73,6 +73,10 @@ export class DeviceService {
       })
       .pipe(
         pluck('data'),
+        map((resp) => {
+          if (resp.code !== 100000) throw new Error(resp.msg);
+          return resp;
+        }),
         catchError(() =>
           throwError(
             new HttpException(
@@ -113,6 +117,10 @@ export class DeviceService {
       })
       .pipe(
         pluck('data'),
+        map((resp) => {
+          if (resp.code != 100000) throw new Error(resp.msg);
+          return resp;
+        }),
         catchError((err) =>
           throwError(
             new HttpException(

@@ -43,12 +43,12 @@ export class CallbackController {
     return 'OK';
   }
 
-  private async handleEvent(filename: string, devicename: string) {
+  private async handleEvent(filename: string, deviceToken: string) {
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
-    const pad = await this.deviceService.getPadByName(devicename);
-    new Logger('FaceID', true).log(`Found ${pad.deviceName}`);
+    const pad = await this.deviceService.getPadByToken(deviceToken);
+    new Logger('FaceID', true).log(`Found ${pad.appChannel} ${pad.deviceName}`);
 
     const fileBuffer = fs.readFileSync(
       path.join(this.configService.get('DATA_PATH'), filename),
