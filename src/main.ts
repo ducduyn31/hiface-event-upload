@@ -8,18 +8,18 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // app.connectMicroservice<MicroserviceOptions>({
-  //   transport: Transport.KAFKA,
-  //   options: {
-  //     client: {
-  //       brokers: [configService.get('KAFKA_URI')],
-  //     },
-  //     consumer: {
-  //       groupId: 'event-consumer',
-  //     },
-  //   },
-  // });
-  // await app.startAllMicroservicesAsync();
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        brokers: [configService.get('KAFKA_URI')],
+      },
+      consumer: {
+        groupId: 'event-consumer',
+      },
+    },
+  });
+  await app.startAllMicroservicesAsync();
   await app.listen(3000, () =>
     new Logger('NestApplication').log('Server started on port 3000'),
   );
