@@ -6,6 +6,7 @@ import {
   HttpException,
   Inject,
   Logger,
+  Param,
   Post,
   UploadedFile,
   UseInterceptors,
@@ -210,6 +211,21 @@ export class RecordController {
         },
       })),
     );
+  }
+
+  @Post('device/:token')
+  async configDevice(@Param('token') token, @Body() payload) {
+    const server: ServerInfo = await this.cacheManager.get('server');
+    if (!server) throw new HttpException('Server is not set up yet', 400);
+
+    const pad = await this.deviceService.getPadByToken(token);
+
+    if (!payload.name) throw new HttpException('`name` can not be empty', 400);
+
+    return this.deviceService.configPad(server, {
+      ...pad.toScreenInfo(),
+      app_channel: payload.name,
+    });
   }
 
   @Get('devices')

@@ -77,10 +77,10 @@ export class DeviceService {
           if (resp.code !== 100000) throw new Error(resp.msg);
           return resp;
         }),
-        catchError(() =>
+        catchError((err) =>
           throwError(
             new HttpException(
-              `Failed to config ${pad.device_token} pad on server`,
+              `Failed to config ${pad.device_token} pad on server: ${err.message}`,
               400,
             ),
           ),
