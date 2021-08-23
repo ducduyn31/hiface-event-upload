@@ -53,7 +53,7 @@ export class RecordController {
       if (token) {
         pad = await this.deviceService.getPadByToken(token);
       } else {
-        pad = await this.deviceService.getPadByName(padName);
+        pad = await this.deviceService.getPadByLocation(padName);
       }
     } catch (e) {
       new Logger('EventUpload').error(e.message);
@@ -133,7 +133,7 @@ export class RecordController {
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
-    const pad = await this.deviceService.getPadByName(record.pad_name);
+    const pad = await this.deviceService.getPadByLocation(record.pad_name);
 
     return this.recordService
       .uploadRecordPhoto(server, pad.toScreenInfo(), file)
@@ -180,6 +180,7 @@ export class RecordController {
       device_token: deviceTokenGenerator(),
       device_channel: newDeviceRequest.name,
       app_channel: newDeviceRequest.name,
+      camera_name: newDeviceRequest.name,
       user_token: '',
       user_secret: '',
       client_version_list: '',
@@ -195,6 +196,7 @@ export class RecordController {
                 ...pad,
                 user_token: r.data.token,
                 user_secret: r.data.secret,
+                camera_name: newDeviceRequest.name,
               }),
             ),
           )
@@ -225,6 +227,7 @@ export class RecordController {
     return this.deviceService.configPad(server, {
       ...pad.toScreenInfo(),
       app_channel: payload.name,
+      camera_name: payload.name,
     });
   }
 

@@ -15,6 +15,9 @@ export class Screen {
   @Column({ name: 'camera_name' })
   deviceName: string;
 
+  @Column({ name: 'camera_position' })
+  deviceLocation: string;
+
   @Column({ name: 'app_channel', nullable: true })
   appChannel: string;
 

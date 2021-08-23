@@ -19,12 +19,12 @@ export class DeviceService {
     @InjectRepository(Screen) private screenRepository: Repository<Screen>,
   ) {}
 
-  async getPadByName(name: string) {
-    if (!name) {
-      throw new HttpException('Please provide pad name', 400);
+  async getPadByLocation(location: string) {
+    if (!location) {
+      throw new HttpException('Please provide pad location', 400);
     }
     return await this.screenRepository.findOneOrFail({
-      deviceName: name,
+      deviceLocation: location,
     });
   }
 

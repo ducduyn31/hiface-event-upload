@@ -11,4 +11,5 @@ export class ScreenInfo {
   device_token: string;
   user_token: string;
   user_secret: string;
+  camera_name?: string;
 }

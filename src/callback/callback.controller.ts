@@ -1,15 +1,9 @@
-import {
-  CACHE_MANAGER,
-  Controller,
-  HttpException,
-  Inject,
-  Logger,
-} from '@nestjs/common';
+import { CACHE_MANAGER, Controller, Inject, Logger } from '@nestjs/common';
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
-import { combineLatest } from 'rxjs';
-import { mergeMap, pluck } from 'rxjs/operators';
+import { combineLatest, of } from 'rxjs';
+import { catchError, mergeMap, pluck } from 'rxjs/operators';
 import {
   LivenessType,
   PassType,
@@ -37,16 +31,15 @@ export class CallbackController {
 
   @MessagePattern('face-detected-event')
   onPhotoCaptured(message: KafkaMessage) {
-    const { filename, devicename, image, filepath } = message.value as any;
+    const { filename, devicename, image } = message.value as any;
     new Logger('FaceID').log(`${filename} captured at ${devicename}`);
-    this.handleEvent(filename, filepath, devicename, image);
+    this.handleEvent(filename, devicename, image);
     return 'OK';
   }
 
   private async handleEvent(
     filename: string,
-    filepath: string,
-    deviceToken: string,
+    deviceLocation: string,
     image: string,
   ) {
     const server: ServerInfo = await this.cacheManager.get('server');
@@ -54,10 +47,12 @@ export class CallbackController {
       new Logger('FaceID', true).log(`Server is not set up yet`);
       return;
     }
+    let pad;
 
-    const pad = await this.deviceService.getPadByToken(deviceToken);
-    if (!pad) {
-      new Logger('FaceID', true).log(`Pad not found`);
+    try {
+      pad = await this.deviceService.getPadByLocation(deviceLocation);
+    } catch (e) {
+      new Logger('FaceID', true).log(`Pad not found: ${e.message}`);
       return;
     }
     new Logger('FaceID', true).log(`Found ${pad.appChannel} ${pad.deviceName}`);
@@ -73,38 +68,65 @@ export class CallbackController {
       new Logger('FaceID', true).log(`Load image size: ${fileBuffer.length}`);
     }
     return combineLatest([
-      this.foliageService.recognize(
-        server,
-        {
-          buffer: fileBuffer,
-          originalname: filename,
-        },
-        `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
-      ),
+      this.foliageService
+        .recognize(
+          server,
+          {
+            buffer: fileBuffer,
+            originalname: filename,
+          },
+          `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
+        )
+        .pipe(
+          catchError((err) => {
+            new Logger('FaceID').error(`Foliage failed: ${err.message}`);
+            return of(null);
+          }),
+        ),
       this.recordService
         .uploadRecordPhoto(server, pad.toScreenInfo(), {
           buffer: fileBuffer,
           originalname: filename,
         })
-        .pipe(pluck('data'), pluck('key')),
+        .pipe(
+          pluck('data'),
+          pluck('key'),
+          catchError((err) => {
+            new Logger('FaceID').error(
+              `Upload image event failed: ${err.message}`,
+            );
+            return of(null);
+          }),
+        ),
     ]).pipe(
       mergeMap((value) => {
         const [result, photoPath] = value;
-        if (!result.recognized)
-          throw new HttpException('Face is not recognizable', 300);
-        return this.recordService.uploadEvent(
-          server,
-          pad.toScreenInfo(),
-          result.person.subject_id,
-          photoPath as string,
-          RecognitionType.EMPLOYEE,
-          VerificationMode.FACE,
-          PassType.PASS,
-          +result.person.confidence,
-          +result.person.confidence,
-          LivenessType.NOT_DETECTED,
-          moment().unix(),
-        );
+        if (!result.recognized) {
+          new Logger('FaceID', true).log('Face is not recognizable');
+          return;
+        }
+        return this.recordService
+          .uploadEvent(
+            server,
+            pad.toScreenInfo(),
+            result.person.subject_id,
+            photoPath as string,
+            RecognitionType.EMPLOYEE,
+            VerificationMode.FACE,
+            PassType.PASS,
+            +result.person.confidence,
+            +result.person.confidence,
+            LivenessType.NOT_DETECTED,
+            moment().unix(),
+          )
+          .pipe(
+            catchError((err) => {
+              new Logger('FaceID', true).error(
+                `Upload event failed ${err.message}`,
+              );
+              return of(null);
+            }),
+          );
       }),
     );
   }
