@@ -37,24 +37,41 @@ export class CallbackController {
 
   @MessagePattern('face-detected-event')
   onPhotoCaptured(message: KafkaMessage) {
-    const { filename, devicename } = message.value as any;
+    const { filename, devicename, image, filepath } = message.value as any;
     new Logger('FaceID').log(`${filename} captured at ${devicename}`);
-    this.handleEvent(filename, devicename);
+    this.handleEvent(filename, filepath, devicename, image);
     return 'OK';
   }
 
-  private async handleEvent(filename: string, deviceToken: string) {
+  private async handleEvent(
+    filename: string,
+    filepath: string,
+    deviceToken: string,
+    image: string,
+  ) {
     const server: ServerInfo = await this.cacheManager.get('server');
-    if (!server) throw new HttpException('Server is not set up yet', 400);
+    if (!server) {
+      new Logger('FaceID', true).log(`Server is not set up yet`);
+      return;
+    }
 
     const pad = await this.deviceService.getPadByToken(deviceToken);
+    if (!pad) {
+      new Logger('FaceID', true).log(`Pad not found`);
+      return;
+    }
     new Logger('FaceID', true).log(`Found ${pad.appChannel} ${pad.deviceName}`);
 
-    const fileBuffer = fs.readFileSync(
-      path.join(this.configService.get('DATA_PATH'), filename),
-    );
-    new Logger('FaceID', true).log(`Read ${filename}`);
-
+    let fileBuffer;
+    if (!image) {
+      fileBuffer = fs.readFileSync(
+        path.join(this.configService.get('DATA_PATH'), filename),
+      );
+      new Logger('FaceID', true).log(`Read ${filename}`);
+    } else {
+      fileBuffer = Buffer.from(image, 'base64');
+      new Logger('FaceID', true).log(`Load image size: ${fileBuffer.length}`);
+    }
     return combineLatest([
       this.foliageService.recognize(
         server,
