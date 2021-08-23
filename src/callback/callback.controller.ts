@@ -3,7 +3,7 @@ import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
 import { combineLatest, of } from 'rxjs';
-import { catchError, mergeMap, pluck } from 'rxjs/operators';
+import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
 import {
   LivenessType,
   PassType,
@@ -98,36 +98,38 @@ export class CallbackController {
             return of(null);
           }),
         ),
-    ]).pipe(
-      mergeMap((value) => {
-        const [result, photoPath] = value;
-        if (!result.recognized) {
-          new Logger('FaceID', true).log('Face is not recognizable');
-          return;
-        }
-        return this.recordService
-          .uploadEvent(
-            server,
-            pad.toScreenInfo(),
-            result.person.subject_id,
-            photoPath as string,
-            RecognitionType.EMPLOYEE,
-            VerificationMode.FACE,
-            PassType.PASS,
-            +result.person.confidence,
-            +result.person.confidence,
-            LivenessType.NOT_DETECTED,
-            moment().unix(),
-          )
-          .pipe(
-            catchError((err) => {
-              new Logger('FaceID', true).error(
-                `Upload event failed ${err.message}`,
-              );
-              return of(null);
-            }),
-          );
-      }),
-    );
+    ])
+      .pipe(
+        mergeMap((value) => {
+          const [result, photoPath] = value;
+          if (!result.recognized) {
+            new Logger('FaceID', true).log('Face is not recognizable');
+            return;
+          }
+          return this.recordService
+            .uploadEvent(
+              server,
+              pad.toScreenInfo(),
+              result.person.subject_id,
+              photoPath as string,
+              RecognitionType.EMPLOYEE,
+              VerificationMode.FACE,
+              PassType.PASS,
+              +result.person.confidence,
+              +result.person.confidence,
+              LivenessType.NOT_DETECTED,
+              moment().unix(),
+            )
+            .pipe(
+              catchError((err) => {
+                new Logger('FaceID', true).error(
+                  `Upload event failed ${err.message}`,
+                );
+                return of(null);
+              }),
+            );
+        }),
+      )
+      .subscribe();
   }
 }
