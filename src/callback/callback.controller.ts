@@ -104,7 +104,7 @@ export class CallbackController {
           const [result, photoPath] = value;
           if (!result || !photoPath || !result.recognized) {
             new Logger('FaceID', true).log('Face is not recognizable');
-            return;
+            return of(null);
           }
           return this.recordService
             .uploadEvent(
