@@ -102,7 +102,7 @@ export class CallbackController {
       .pipe(
         mergeMap((value) => {
           const [result, photoPath] = value;
-          if (!result.recognized) {
+          if (!result || !photoPath || !result.recognized) {
             new Logger('FaceID', true).log('Face is not recognizable');
             return;
           }
