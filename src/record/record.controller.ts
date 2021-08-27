@@ -25,7 +25,7 @@ import {
 import * as moment from 'moment';
 import { catchError, delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
-import { combineLatest, of, throwError } from 'rxjs';
+import { combineLatest, forkJoin, of, throwError } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
 import { customAlphabet } from 'nanoid';
 import { DeviceService } from '../shared/device/device.service';
@@ -59,6 +59,13 @@ export class RecordController {
       new Logger('EventUpload').error(e.message);
       throw new HttpException('Failed to load pad', 400);
     }
+
+    this.foliageService
+      .detectAndCrop(server, file)
+      .pipe(mergeMap((value) => forkJoin(value)))
+      .subscribe((r) => {
+        console.log(r.length);
+      });
 
     return combineLatest([
       this.foliageService
