@@ -1,7 +1,14 @@
 import { HttpException, HttpService, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../../shared/server-info';
 import * as FormData from 'form-data';
-import { catchError, map, pluck, tap } from 'rxjs/operators';
+import {
+  catchError,
+  map,
+  mergeAll,
+  mergeMap,
+  pluck,
+  tap,
+} from 'rxjs/operators';
 import { ConfigService } from '@nestjs/config';
 import { from, Observable, throwError } from 'rxjs';
 import * as sharp from 'sharp';
@@ -50,7 +57,11 @@ export class FoliageService {
   detect(
     server: ServerInfo,
     photo: { buffer: Buffer; originalname: string },
-  ): Observable<{ faces_info: any[] }> {
+  ): Observable<{
+    faces_info: {
+      rect: { left: number; right: number; top: number; bottom: number };
+    }[];
+  }> {
     const host = `${this.getFoliageHost(server)}/detect`;
 
     const form = new FormData();
@@ -66,19 +77,19 @@ export class FoliageService {
   detectAndCrop(
     server: ServerInfo,
     photo: { buffer: Buffer; originalname: string },
-  ) {
+  ): Observable<Buffer> {
     return this.detect(server, photo).pipe(
       pluck('faces_info'),
       map((faces_info) => faces_info.map((info) => info.rect)),
-      map((rects) =>
-        rects.map(
-          (rect: {
-            left: number;
-            top: number;
-            right: number;
-            bottom: number;
-          }) =>
-            from(
+      tap((rects) =>
+        new Logger('FoliageService').log(`Found ${rects.length} faces`),
+      ),
+      mergeMap(
+        (
+          rects: { left: number; right: number; top: number; bottom: number }[],
+        ) =>
+          from(
+            rects.map((rect) =>
               sharp(photo.buffer)
                 .extract({
                   left: rect.left,
@@ -88,7 +99,7 @@ export class FoliageService {
                 })
                 .toBuffer(),
             ),
-        ),
+          ).pipe(mergeAll()),
       ),
       catchError((err) =>
         throwError(
@@ -109,6 +120,10 @@ export class FoliageService {
       photoData: photo.buffer.toString('base64'),
     };
 
-    return this.http.post(host, payload).pipe(pluck('data'));
+    return this.http.post(host, payload).pipe(
+      pluck('data', 'faces'),
+      map((faces) => faces[0]),
+      pluck('attributes', 'liveness', 'pred'),
+    );
   }
 }

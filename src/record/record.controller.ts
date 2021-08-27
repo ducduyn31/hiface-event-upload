@@ -25,7 +25,7 @@ import {
 import * as moment from 'moment';
 import { catchError, delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
 import { FoliageService } from './foliage/foliage.service';
-import { combineLatest, forkJoin, of, throwError } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
 import { customAlphabet } from 'nanoid';
 import { DeviceService } from '../shared/device/device.service';
@@ -60,76 +60,82 @@ export class RecordController {
       throw new HttpException('Failed to load pad', 400);
     }
 
-    this.foliageService
-      .detectAndCrop(server, file)
-      .pipe(mergeMap((value) => forkJoin(value)))
-      .subscribe((r) => {
-        console.log(r.length);
-      });
-
-    return combineLatest([
-      this.foliageService
-        .recognize(
-          server,
-          file,
-          `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
-        )
-        .pipe(
-          catchError((err) => {
-            new Logger('FoliageService').error(err.message);
-            return throwError(
-              new HttpException(
-                `failed to recognize via recognize service`,
-                400,
-              ),
-            );
-          }),
-        ),
-      this.recordService
-        .uploadRecordPhoto(server, pad.toScreenInfo(), file)
-        .pipe(
-          pluck('data'),
-          pluck('key'),
-          catchError((err) =>
-            throwError(
-              new HttpException(
-                `failed to upload event image: ${err.message}`,
-                400,
-              ),
-            ),
-          ),
-        ),
-    ]).pipe(
-      mergeMap((value) => {
-        const [result, photoPath] = value;
-        if (!result.recognized)
-          throw new HttpException('Face is not recognizable', 300);
-        return this.recordService
-          .uploadEvent(
+    const recognizeAndUpload = (photoBuffer: Buffer) =>
+      forkJoin([
+        this.foliageService
+          .recognize(
             server,
-            pad.toScreenInfo(),
-            result.person.subject_id,
-            photoPath as string,
-            RecognitionType.EMPLOYEE,
-            VerificationMode.FACE,
-            PassType.PASS,
-            +result.person.confidence,
-            +result.person.confidence,
-            LivenessType.NOT_DETECTED,
-            moment().unix(),
+            { buffer: photoBuffer, originalname: file.originalname },
+            `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
           )
           .pipe(
-            catchError((err) =>
-              throwError(
-                new HttpException(
-                  `failed to upload event: ${err.message}`,
-                  400,
-                ),
-              ),
-            ),
-          );
-      }),
-    );
+            catchError((err) => {
+              new Logger('FoliageService').error(err.message);
+              return of(null);
+            }),
+          ),
+        this.foliageService
+          .livenessCheck({
+            buffer: photoBuffer,
+            originalname: file.originalname,
+          })
+          .pipe(
+            catchError((err) => {
+              new Logger('FoliageService').error(err.message);
+              return of(null);
+            }),
+          ),
+        this.recordService
+          .uploadRecordPhoto(server, pad.toScreenInfo(), {
+            buffer: photoBuffer,
+            originalname: file.originalname,
+          })
+          .pipe(
+            pluck('data', 'key'),
+            catchError((err) => {
+              new Logger('FoliageService').error(err.message);
+              return of(null);
+            }),
+          ),
+      ]).pipe(
+        mergeMap((result) => {
+          const [recognize, liveness, photoPath] = result;
+          if (!recognize.recognized) {
+            new Logger('FoliageService').error('Face is not recognizable');
+            return of(null);
+          }
+
+          const livenessThreshold =
+            +this.configService.get('LIVENESS_THRESHOLD');
+
+          return this.recordService
+            .uploadEvent(
+              server,
+              pad.toScreenInfo(),
+              recognize.person.subject_id,
+              photoPath as string,
+              RecognitionType.EMPLOYEE,
+              VerificationMode.FACE,
+              PassType.PASS,
+              +recognize.person.confidence,
+              +liveness,
+              +liveness >= livenessThreshold
+                ? LivenessType.LIVING
+                : LivenessType.NONLIVING,
+              moment().unix(),
+            )
+            .pipe(
+              catchError((err) => {
+                new Logger('FoliageService').error(err.message);
+                return of(null);
+              }),
+            );
+        }),
+      );
+
+    return this.foliageService
+      .detectAndCrop(server, file)
+      .pipe(mergeMap((buffer) => recognizeAndUpload(buffer)));
   }
 
   @UseInterceptors(FileInterceptor('event_photo'))

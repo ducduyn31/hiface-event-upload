@@ -2,8 +2,8 @@ import { CACHE_MANAGER, Controller, Inject, Logger } from '@nestjs/common';
 import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
-import { combineLatest, of } from 'rxjs';
-import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
+import { catchError, mergeMap, pluck } from 'rxjs/operators';
 import {
   LivenessType,
   PassType,
@@ -67,69 +67,83 @@ export class CallbackController {
       fileBuffer = Buffer.from(image, 'base64');
       new Logger('FaceID', true).log(`Load image size: ${fileBuffer.length}`);
     }
-    return combineLatest([
-      this.foliageService
-        .recognize(
-          server,
-          {
-            buffer: fileBuffer,
+
+    const recognizeAndUpload = (photoBuffer: Buffer) =>
+      forkJoin([
+        this.foliageService
+          .recognize(
+            server,
+            { buffer: photoBuffer, originalname: filename },
+            `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
+          )
+          .pipe(
+            catchError((err) => {
+              new Logger('FoliageService').error(err.message);
+              return of(null);
+            }),
+          ),
+        this.foliageService
+          .livenessCheck({
+            buffer: photoBuffer,
             originalname: filename,
-          },
-          `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
-        )
-        .pipe(
-          catchError((err) => {
-            new Logger('FaceID').error(`Foliage failed: ${err.message}`);
-            return of(null);
-          }),
-        ),
-      this.recordService
-        .uploadRecordPhoto(server, pad.toScreenInfo(), {
-          buffer: fileBuffer,
-          originalname: filename,
-        })
-        .pipe(
-          pluck('data'),
-          pluck('key'),
-          catchError((err) => {
-            new Logger('FaceID').error(
-              `Upload image event failed: ${err.message}`,
-            );
-            return of(null);
-          }),
-        ),
-    ])
-      .pipe(
-        mergeMap((value) => {
-          const [result, photoPath] = value;
-          if (!result || !photoPath || !result.recognized) {
-            new Logger('FaceID', true).log('Face is not recognizable');
+          })
+          .pipe(
+            catchError((err) => {
+              new Logger('FoliageService').error(err.message);
+              return of(null);
+            }),
+          ),
+        this.recordService
+          .uploadRecordPhoto(server, pad.toScreenInfo(), {
+            buffer: photoBuffer,
+            originalname: filename,
+          })
+          .pipe(
+            pluck('data', 'key'),
+            catchError((err) => {
+              new Logger('FoliageService').error(err.message);
+              return of(null);
+            }),
+          ),
+      ]).pipe(
+        mergeMap((result) => {
+          const [recognize, liveness, photoPath] = result;
+          if (!recognize.recognized) {
+            new Logger('FoliageService').error('Face is not recognizable');
             return of(null);
           }
+
+          const livenessThreshold =
+            +this.configService.get('LIVENESS_THRESHOLD');
+
           return this.recordService
             .uploadEvent(
               server,
               pad.toScreenInfo(),
-              result.person.subject_id,
+              recognize.person.subject_id,
               photoPath as string,
               RecognitionType.EMPLOYEE,
               VerificationMode.FACE,
               PassType.PASS,
-              +result.person.confidence,
-              +result.person.confidence,
-              LivenessType.NOT_DETECTED,
+              +recognize.person.confidence,
+              +liveness,
+              +liveness >= livenessThreshold
+                ? LivenessType.LIVING
+                : LivenessType.NONLIVING,
               moment().unix(),
             )
             .pipe(
               catchError((err) => {
-                new Logger('FaceID', true).error(
-                  `Upload event failed ${err.message}`,
-                );
+                new Logger('FoliageService').error(err.message);
                 return of(null);
               }),
             );
         }),
-      )
+      );
+
+    return this.foliageService
+      .detectAndCrop(server, { buffer: fileBuffer, originalname: filename })
+      .pipe(mergeMap((buffer) => recognizeAndUpload(buffer)))
       .subscribe();
   }
 }
