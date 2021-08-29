@@ -92,8 +92,8 @@ export class FoliageService {
             rects.map(async (rect) => {
               const faceWidth = rect.right - rect.left;
               const faceHeight = rect.bottom - rect.top;
-              const horizontalMargin = faceWidth * 0.2,
-                verticalMargin = faceHeight * 0.2;
+              const horizontalMargin = Math.floor(faceWidth * 0.2),
+                verticalMargin = Math.floor(faceHeight * 0.2);
               const imageMeta = await sharp(photo.buffer).metadata();
               const imageWidth = imageMeta.width,
                 imageHeight = imageMeta.height;
