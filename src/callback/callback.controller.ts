@@ -108,7 +108,7 @@ export class CallbackController {
       ]).pipe(
         mergeMap((result) => {
           const [recognize, liveness, photoPath] = result;
-          if (!recognize.recognized) {
+          if (!recognize || !photoPath || !recognize.recognized) {
             new Logger('FoliageService').error('Face is not recognizable');
             return of(null);
           }
