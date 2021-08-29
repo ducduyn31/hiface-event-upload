@@ -143,7 +143,13 @@ export class CallbackController {
 
     return this.foliageService
       .detectAndCrop(server, { buffer: fileBuffer, originalname: filename })
-      .pipe(mergeMap((buffer) => recognizeAndUpload(buffer)))
+      .pipe(
+        mergeMap((buffer) => recognizeAndUpload(buffer)),
+        catchError((err) => {
+          new Logger('FaceID').log(`Something failed: ${err.message}`);
+          return of(null);
+        }),
+      )
       .subscribe();
   }
 }
