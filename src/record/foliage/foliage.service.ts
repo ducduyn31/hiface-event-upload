@@ -89,16 +89,37 @@ export class FoliageService {
           rects: { left: number; right: number; top: number; bottom: number }[],
         ) =>
           from(
-            rects.map((rect) =>
-              sharp(photo.buffer)
+            rects.map(async (rect) => {
+              const faceWidth = rect.right - rect.left;
+              const faceHeight = rect.bottom - rect.top;
+              const horizontalMargin = faceWidth * 0.2,
+                verticalMargin = faceHeight * 0.2;
+              const imageMeta = await sharp(photo.buffer).metadata();
+              const imageWidth = imageMeta.width,
+                imageHeight = imageMeta.height;
+
+              const topMargin =
+                rect.top - verticalMargin > 0 ? verticalMargin : rect.top;
+              const leftMargin =
+                rect.left - horizontalMargin > 0 ? horizontalMargin : rect.left;
+              const rightMargin =
+                rect.right + horizontalMargin < imageWidth
+                  ? horizontalMargin
+                  : imageWidth - rect.right;
+              const bottomMargin =
+                rect.bottom + verticalMargin < imageHeight
+                  ? verticalMargin
+                  : imageHeight - rect.bottom;
+
+              return await sharp(photo.buffer)
                 .extract({
-                  left: rect.left,
-                  top: rect.top,
-                  height: rect.bottom - rect.top,
-                  width: rect.right - rect.left,
+                  left: rect.left - leftMargin,
+                  top: rect.top - topMargin,
+                  height: topMargin + faceHeight + bottomMargin,
+                  width: leftMargin + faceWidth + rightMargin,
                 })
-                .toBuffer(),
-            ),
+                .toBuffer();
+            }),
           ).pipe(mergeAll()),
       ),
       catchError((err) =>
