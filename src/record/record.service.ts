@@ -1,10 +1,10 @@
-import { HttpService, Injectable, Logger } from '@nestjs/common';
+import { HttpService, Injectable } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
 import { ScreenInfo } from '../shared/screen-info';
 import * as uuid from 'uuid';
 import * as moment from 'moment';
 import { generateSignature } from '../utils/signature';
-import { catchError, map, pluck } from 'rxjs/operators';
+import { map, pluck } from 'rxjs/operators';
 import * as FormData from 'form-data';
 import * as md5 from 'md5';
 import {
@@ -13,13 +13,11 @@ import {
   RecognitionType,
   VerificationMode,
 } from './record';
-import Any = jasmine.Any;
-import { of } from 'rxjs';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class RecordService {
-  constructor(private http: HttpService) {
-  }
+  constructor(private http: HttpService, private config: ConfigService) {}
 
   test(server: ServerInfo, pad: ScreenInfo, data: any) {
     const host = `${server.host}:${server.port}/meglink/test`;
@@ -80,8 +78,8 @@ export class RecordService {
       );
   }
 
-  alarmEvent(subject_id: Any, screen_token: Any) {
-    const host = `http://10.168.2.131:8000/alarm`;
+  alarmEvent(subject_id: any, screen_token: any) {
+    const host = this.config.get('CALLBACK_URL');
     const payload = { subject_id: subject_id, screen_token: screen_token };
     const headers = {};
     return this.http

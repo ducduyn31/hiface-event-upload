@@ -11,6 +11,7 @@ import { Screen } from '../record/models/screen.entity';
 import { SharedModule } from '../shared/shared.module';
 import { DeviceService } from '../shared/device/device.service';
 import { KoalaService } from '../shared/koala/koala.service';
+import { CallbackService } from './callback.service';
 
 @Module({
   imports: [
@@ -30,6 +31,6 @@ import { KoalaService } from '../shared/koala/koala.service';
     TypeOrmModule.forFeature([Screen]),
   ],
   controllers: [CallbackController],
-  providers: [FoliageService, RecordService, DeviceService, KoalaService],
+  providers: [FoliageService, RecordService, DeviceService, KoalaService, CallbackService],
 })
 export class CallbackModule {}

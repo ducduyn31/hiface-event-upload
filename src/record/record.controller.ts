@@ -39,15 +39,16 @@ export class RecordController {
     private deviceService: DeviceService,
     private foliageService: FoliageService,
     private configService: ConfigService,
-  ) {
-  }
+  ) {}
 
   @Post('quick')
   @UseInterceptors(FileInterceptor('photo'))
   async quick(@UploadedFile() file: Express.Multer.File, @Body() payload: any) {
+    // Get root server
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
+    // Get pad
     let pad;
     const { pad_name: padName, token } = payload;
     try {
@@ -62,7 +63,9 @@ export class RecordController {
     }
 
     const recognizeAndUpload = (photoBuffer: Buffer) =>
+      // Simultaneous perform actions
       forkJoin([
+        // Recognize via foliage
         this.foliageService
           .recognize(
             server,
@@ -75,6 +78,7 @@ export class RecordController {
               return of(null);
             }),
           ),
+        // Liveness check via insight
         this.foliageService
           .livenessCheck({
             buffer: photoBuffer,
@@ -86,6 +90,7 @@ export class RecordController {
               return of(null);
             }),
           ),
+        // Upload image event to koala
         this.recordService
           .uploadRecordPhoto(server, pad.toScreenInfo(), {
             buffer: photoBuffer,
@@ -105,12 +110,17 @@ export class RecordController {
             new Logger('FoliageService').error('Face is not recognizable');
             return of(null);
           }
+
           const livenessThreshold =
             +this.configService.get('LIVENESS_THRESHOLD');
+
+          // Alarm event
           this.recordService.alarmEvent(
             recognize.person.subject_id,
             pad.toScreenInfo().device_token,
           );
+
+          // Upload event to koala
           return this.recordService
             .uploadEvent(
               server,
@@ -136,6 +146,7 @@ export class RecordController {
         }),
       );
 
+    // Multi face detect, then crop
     return this.foliageService
       .detectAndCrop(server, file)
       .pipe(mergeMap((buffer) => recognizeAndUpload(buffer)));
