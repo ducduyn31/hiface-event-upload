@@ -3,7 +3,7 @@ import * as moment from 'moment';
 import { Cache } from 'cache-manager';
 import { ServerInfo } from '../shared/server-info';
 import { forkJoin, of } from 'rxjs';
-import { catchError, mergeMap, pluck } from 'rxjs/operators';
+import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
 import {
   LivenessType,
   PassType,
@@ -27,7 +27,8 @@ export class CallbackController {
     private recordService: RecordService,
     private configService: ConfigService,
     private deviceService: DeviceService,
-  ) {}
+  ) {
+  }
 
   @MessagePattern('face-detected-event')
   onPhotoCaptured(message: KafkaMessage) {

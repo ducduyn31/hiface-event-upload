@@ -1,10 +1,10 @@
-import { HttpService, Injectable } from '@nestjs/common';
+import { HttpService, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
 import { ScreenInfo } from '../shared/screen-info';
 import * as uuid from 'uuid';
 import * as moment from 'moment';
 import { generateSignature } from '../utils/signature';
-import { map, pluck } from 'rxjs/operators';
+import { catchError, map, pluck } from 'rxjs/operators';
 import * as FormData from 'form-data';
 import * as md5 from 'md5';
 import {
@@ -13,10 +13,13 @@ import {
   RecognitionType,
   VerificationMode,
 } from './record';
+import Any = jasmine.Any;
+import { of } from 'rxjs';
 
 @Injectable()
 export class RecordService {
-  constructor(private http: HttpService) {}
+  constructor(private http: HttpService) {
+  }
 
   test(server: ServerInfo, pad: ScreenInfo, data: any) {
     const host = `${server.host}:${server.port}/meglink/test`;
@@ -74,6 +77,28 @@ export class RecordService {
           if (resp.code !== 100000) throw new Error(resp.msg);
           return resp;
         }),
+      );
+  }
+
+  alarmEvent(subject_id: Any, screen_token: Any) {
+    const host = `http://10.168.2.131:8000/alarm`;
+    const payload = { subject_id: subject_id, screen_token: screen_token };
+    const headers = {};
+    return this.http
+      .post(host, payload, {
+        headers,
+      })
+      .pipe(
+        pluck('data'),
+        map((resp) => {
+          if (resp.code !== 1000) throw new Error(resp.msg);
+          return resp;
+        }),
+      )
+      .subscribe(
+        (data) => console.log(data),
+        (err) => console.log('fail alarm'),
+        () => console.log('alarm success'),
       );
   }
 

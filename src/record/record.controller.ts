@@ -39,7 +39,8 @@ export class RecordController {
     private deviceService: DeviceService,
     private foliageService: FoliageService,
     private configService: ConfigService,
-  ) {}
+  ) {
+  }
 
   @Post('quick')
   @UseInterceptors(FileInterceptor('photo'))
@@ -104,10 +105,12 @@ export class RecordController {
             new Logger('FoliageService').error('Face is not recognizable');
             return of(null);
           }
-
           const livenessThreshold =
             +this.configService.get('LIVENESS_THRESHOLD');
-
+          this.recordService.alarmEvent(
+            recognize.person.subject_id,
+            pad.toScreenInfo().device_token,
+          );
           return this.recordService
             .uploadEvent(
               server,

@@ -3,7 +3,7 @@ WORKDIR /app
 COPY ./package.json ./
 RUN npm install --arch=x64 --platform=linuxmusl --ignore-scripts=false --verbose
 COPY . .
-RUN npm run build
+RUN npm run start:dev
 
 
 FROM node:15.12.0-alpine3.13
