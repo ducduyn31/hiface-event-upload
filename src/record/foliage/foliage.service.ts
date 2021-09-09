@@ -125,36 +125,37 @@ export class FoliageService {
     box: { left: number; top: number; bottom: number; right: number },
     margin: number,
   ) {
-    const image = await sharp(photo.buffer);
-    const faceWidth = box.right - box.left,
-      faceHeight = box.bottom - box.top;
-
-    const horizontalMargin = Math.floor(faceWidth * margin),
-      verticalMargin = Math.floor(faceHeight * margin);
-
-    const imageMeta = await image.metadata();
-    const imageWidth = imageMeta.width,
-      imageHeight = imageMeta.height;
-
-    const topMargin = box.top - verticalMargin > 0 ? verticalMargin : box.top;
-    const leftMargin =
-      box.left - horizontalMargin > 0 ? horizontalMargin : box.left;
-    const rightMargin =
-      box.right + horizontalMargin < imageWidth
-        ? horizontalMargin
-        : imageWidth - box.right;
-    const bottomMargin =
-      box.bottom + verticalMargin < imageHeight
-        ? verticalMargin
-        : imageHeight - box.bottom;
-
-    return await image
-      .extract({
-        left: box.left - leftMargin,
-        top: box.top - topMargin,
-        height: topMargin + faceHeight + bottomMargin,
-        width: leftMargin + faceWidth + rightMargin,
-      })
-      .toBuffer();
+    // const image = await sharp(photo.buffer);
+    // const faceWidth = box.right - box.left,
+    //   faceHeight = box.bottom - box.top;
+    //
+    // const horizontalMargin = Math.floor(faceWidth * margin),
+    //   verticalMargin = Math.floor(faceHeight * margin);
+    //
+    // const imageMeta = await image.metadata();
+    // const imageWidth = imageMeta.width,
+    //   imageHeight = imageMeta.height;
+    //
+    // const topMargin = box.top - verticalMargin > 0 ? verticalMargin : box.top;
+    // const leftMargin =
+    //   box.left - horizontalMargin > 0 ? horizontalMargin : box.left;
+    // const rightMargin =
+    //   box.right + horizontalMargin < imageWidth
+    //     ? horizontalMargin
+    //     : imageWidth - box.right;
+    // const bottomMargin =
+    //   box.bottom + verticalMargin < imageHeight
+    //     ? verticalMargin
+    //     : imageHeight - box.bottom;
+    //
+    // return await image
+    //   .extract({
+    //     left: box.left - leftMargin,
+    //     top: box.top - topMargin,
+    //     height: topMargin + faceHeight + bottomMargin,
+    //     width: leftMargin + faceWidth + rightMargin,
+    //   })
+    //   .toBuffer();
+    return photo.buffer;
   }
 }
