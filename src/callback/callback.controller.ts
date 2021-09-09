@@ -3,7 +3,6 @@ import { MessagePattern } from '@nestjs/microservices';
 import { KafkaMessage } from 'kafkajs';
 import { CallbackService } from './callback.service';
 import { Cache } from 'cache-manager';
-import { Md5 } from 'md5-typescript';
 
 @Controller('callback')
 export class CallbackController {

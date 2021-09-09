@@ -148,7 +148,7 @@ export class FoliageService {
         ? verticalMargin
         : imageHeight - box.bottom;
 
-    return image
+    return await image
       .extract({
         left: box.left - leftMargin,
         top: box.top - topMargin,
