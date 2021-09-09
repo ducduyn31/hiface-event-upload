@@ -89,37 +89,9 @@ export class FoliageService {
           rects: { left: number; right: number; top: number; bottom: number }[],
         ) =>
           from(
-            rects.map(async (rect) => {
-              const faceWidth = rect.right - rect.left;
-              const faceHeight = rect.bottom - rect.top;
-              const horizontalMargin = Math.floor(faceWidth * 0.2),
-                verticalMargin = Math.floor(faceHeight * 0.2);
-              const imageMeta = await sharp(photo.buffer).metadata();
-              const imageWidth = imageMeta.width,
-                imageHeight = imageMeta.height;
-
-              const topMargin =
-                rect.top - verticalMargin > 0 ? verticalMargin : rect.top;
-              const leftMargin =
-                rect.left - horizontalMargin > 0 ? horizontalMargin : rect.left;
-              const rightMargin =
-                rect.right + horizontalMargin < imageWidth
-                  ? horizontalMargin
-                  : imageWidth - rect.right;
-              const bottomMargin =
-                rect.bottom + verticalMargin < imageHeight
-                  ? verticalMargin
-                  : imageHeight - rect.bottom;
-
-              return await sharp(photo.buffer)
-                .extract({
-                  left: rect.left - leftMargin,
-                  top: rect.top - topMargin,
-                  height: topMargin + faceHeight + bottomMargin,
-                  width: leftMargin + faceWidth + rightMargin,
-                })
-                .toBuffer();
-            }),
+            rects.map((rect) =>
+              FoliageService.cropWithMargin(photo, rect, 0.2),
+            ),
           ).pipe(mergeAll()),
       ),
       catchError((err) =>
@@ -146,5 +118,43 @@ export class FoliageService {
       map((faces) => faces[0]),
       pluck('attributes', 'liveness', 'pred'),
     );
+  }
+
+  static async cropWithMargin(
+    photo: { buffer: Buffer; originalname: string },
+    box: { left: number; top: number; bottom: number; right: number },
+    margin: number,
+  ) {
+    const image = await sharp(photo.buffer);
+    const faceWidth = box.right - box.left,
+      faceHeight = box.bottom - box.top;
+
+    const horizontalMargin = Math.floor(faceWidth * margin),
+      verticalMargin = Math.floor(faceHeight * margin);
+
+    const imageMeta = await image.metadata();
+    const imageWidth = imageMeta.width,
+      imageHeight = imageMeta.height;
+
+    const topMargin = box.top - verticalMargin > 0 ? verticalMargin : box.top;
+    const leftMargin =
+      box.left - horizontalMargin > 0 ? horizontalMargin : box.left;
+    const rightMargin =
+      box.right + horizontalMargin < imageWidth
+        ? horizontalMargin
+        : imageWidth - box.right;
+    const bottomMargin =
+      box.bottom + verticalMargin < imageHeight
+        ? verticalMargin
+        : imageHeight - box.bottom;
+
+    return image
+      .extract({
+        left: box.left - leftMargin,
+        top: box.top - topMargin,
+        height: topMargin + faceHeight + bottomMargin,
+        width: leftMargin + faceWidth + rightMargin,
+      })
+      .toBuffer();
   }
 }

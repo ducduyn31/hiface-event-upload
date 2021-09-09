@@ -93,11 +93,7 @@ export class RecordService {
           return resp;
         }),
       )
-      .subscribe(
-        (data) => console.log(data),
-        (err) => console.log('fail alarm'),
-        () => console.log('alarm success'),
-      );
+      .subscribe();
   }
 
   uploadEvent(

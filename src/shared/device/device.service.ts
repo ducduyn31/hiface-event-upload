@@ -1,4 +1,11 @@
-import { HttpException, HttpService, Injectable, Logger } from '@nestjs/common';
+import {
+  CACHE_MANAGER,
+  HttpException,
+  HttpService,
+  Inject,
+  Injectable,
+  Logger,
+} from '@nestjs/common';
 import { ServerInfo } from '../server-info';
 import { ScreenInfo } from '../screen-info';
 import { catchError, map, pluck, tap } from 'rxjs/operators';
@@ -10,6 +17,7 @@ import { KoalaService } from '../koala/koala.service';
 import { throwError } from 'rxjs';
 import * as moment from 'moment';
 import { VerificationMode } from '../../record/record';
+import { Cache } from 'cache-manager';
 
 @Injectable()
 export class DeviceService {
@@ -17,6 +25,7 @@ export class DeviceService {
     private http: HttpService,
     private koalaService: KoalaService,
     @InjectRepository(Screen) private screenRepository: Repository<Screen>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   async getPadByLocation(location: string) {
@@ -41,12 +50,34 @@ export class DeviceService {
     return await this.screenRepository.find({});
   }
 
+  async getPadByBindedStream(stream: string): Promise<string[]> {
+    const rawPads = (await this.cacheManager.get(stream)) as string;
+    if (!rawPads) return [];
+    return JSON.parse(rawPads);
+  }
+
   async truncatePads() {
     return await this.screenRepository.delete({});
   }
 
   async removePad(id) {
     return await this.screenRepository.delete(id);
+  }
+
+  async bindStream(token: string, stream: string): Promise<void> {
+    const padsBound = await this.getPadByBindedStream(stream);
+    if (padsBound.includes(token)) return;
+    padsBound.push(token);
+    await this.cacheManager.set(stream, JSON.stringify(padsBound));
+  }
+
+  async unbindPad(token: string, stream: string): Promise<string[]> {
+    const padsBound = await this.getPadByBindedStream(stream);
+    const findingPadIndex = padsBound.indexOf(token);
+    if (findingPadIndex === -1) return;
+    const newPads = padsBound.splice(findingPadIndex, 1);
+    await this.cacheManager.set(stream, JSON.stringify(newPads));
+    return newPads;
   }
 
   configPad(server: ServerInfo, pad: ScreenInfo) {

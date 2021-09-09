@@ -258,6 +258,19 @@ export class RecordController {
     });
   }
 
+  @Post('device/:token/bind')
+  async bindStream(@Param('token') token, @Body() payload) {
+    const server: ServerInfo = await this.cacheManager.get('server');
+    if (!server) throw new HttpException('Server is not set up yet', 400);
+
+    await this.deviceService.getPadByToken(token);
+    if (!payload.source)
+      throw new HttpException('`source` can not be empty', 400);
+
+    await this.deviceService.bindStream(token, payload.source);
+    return payload.source;
+  }
+
   @Get('devices')
   listPads() {
     return this.deviceService.getAllPads().then((results) =>
