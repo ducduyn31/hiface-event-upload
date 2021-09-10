@@ -135,18 +135,15 @@ export class CallbackService {
       0.2,
     );
 
-    return await Promise.all(
-      pads.map((pad) =>
-        this.recognizeAndUpload(
-          server,
-          {
-            buffer: croppedImage,
-            originalname: source + '.jpg',
-          },
-          pad,
-        ).toPromise(),
-      ),
+    pads.map((pad) =>
+      this.recognizeAndUpload(
+        server,
+        { buffer: croppedImage, originalname: source + '.jpg' },
+        pad,
+      ).subscribe(),
     );
+
+    return 'ok';
   }
 
   private recognizeAndUpload(

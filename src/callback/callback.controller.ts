@@ -23,7 +23,9 @@ export class CallbackController {
   async onFaceDetect(message: KafkaMessage) {
     const { object_id, detection, frame, source } = message.value as any;
     const bbox = detection.bbox.map((point) => Math.floor(point));
-    new Logger('FaceID').log(`Face detected from ${source}`);
+    new Logger('FaceID').log(
+      `Face detected from ${source} for object ${object_id}`,
+    );
     await this.callbackService.handleDetectedEvent(frame, bbox, source);
     return 'OK';
   }
