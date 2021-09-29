@@ -149,7 +149,7 @@ export class RecordController {
     // Multi face detect, then crop
     return this.foliageService.detectAndCrop(server, file).pipe(
       mergeMap((buffer) => recognizeAndUpload(buffer)),
-      map(() => 'Ok'),
+      map(() => 'OK'),
     );
   }
 

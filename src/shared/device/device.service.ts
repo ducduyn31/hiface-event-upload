@@ -26,7 +26,8 @@ export class DeviceService {
     private koalaService: KoalaService,
     @InjectRepository(Screen) private screenRepository: Repository<Screen>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {}
+  ) {
+  }
 
   async getPadByLocation(location: string) {
     if (!location) {
@@ -68,7 +69,7 @@ export class DeviceService {
     const padsBound = await this.getPadByBindedStream(stream);
     if (padsBound.includes(token)) return;
     padsBound.push(token);
-    await this.cacheManager.set(stream, JSON.stringify(padsBound));
+    await this.cacheManager.set(stream, JSON.stringify(padsBound), { ttl: 0 });
   }
 
   async unbindPad(token: string, stream: string): Promise<string[]> {

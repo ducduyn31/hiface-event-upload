@@ -17,6 +17,7 @@ import { RecordService } from '../record/record.service';
 import { ConfigService } from '@nestjs/config';
 import { DeviceService } from '../shared/device/device.service';
 import { Screen } from '../record/models/screen.entity';
+import { FaceDetectMessage } from './requests/FaceDetectMessage';
 
 @Injectable()
 export class CallbackService {
@@ -76,6 +77,7 @@ export class CallbackService {
                 originalname: filename,
               },
               pad,
+              moment().unix(),
             ),
           ),
           catchError((err) => {
@@ -87,11 +89,7 @@ export class CallbackService {
     );
   }
 
-  public async handleDetectedEvent(
-    b64frame: string,
-    bbox: number[],
-    source: string,
-  ) {
+  public async handleFaceDetectedEvent(message: FaceDetectMessage) {
     // Get root server
     const server: ServerInfo = await this.cacheManager.get('server');
     if (!server) {
@@ -102,14 +100,16 @@ export class CallbackService {
     // Get pads
     let pads;
     try {
-      const padTokens = await this.deviceService.getPadByBindedStream(source);
+      const padTokens = await this.deviceService.getPadByBindedStream(
+        message.source,
+      );
       pads = await Promise.all(
         padTokens.map((token) =>
           this.deviceService.getPadByToken(token).catch((reason) => {
             new Logger('FaceID', true).log(
               `Pad ${token} removed, Unbinding from stream: (${reason.message})`,
             );
-            this.deviceService.unbindPad(token, source);
+            this.deviceService.unbindPad(token, message.source);
           }),
         ),
       );
@@ -118,28 +118,15 @@ export class CallbackService {
       return;
     }
 
-    const fileBuffer = Buffer.from(b64frame, 'base64');
+    const fileBuffer = Buffer.from(message.head, 'base64');
     new Logger('FaceID', true).log(`Load image size: ${fileBuffer.length}`);
-
-    const croppedImage = await FoliageService.cropWithMargin(
-      {
-        buffer: fileBuffer,
-        originalname: source + '.jpg',
-      },
-      {
-        left: bbox[0],
-        top: bbox[1],
-        right: bbox[2],
-        bottom: bbox[3],
-      },
-      0.2,
-    );
 
     pads.map((pad) =>
       this.recognizeAndUpload(
         server,
-        { buffer: croppedImage, originalname: source + '.jpg' },
+        { buffer: fileBuffer, originalname: message.oid + '.jpg' },
         pad,
+        message.timestamp,
       ).subscribe(),
     );
 
@@ -150,6 +137,7 @@ export class CallbackService {
     server: ServerInfo,
     photo: { buffer: Buffer; originalname: string },
     pad: Screen,
+    timestamp: number,
   ) {
     return forkJoin([
       // Recognize face via foliage
@@ -209,7 +197,7 @@ export class CallbackService {
                 ? LivenessType.LIVING
                 : LivenessType.NONLIVING
               : LivenessType.NOT_DETECTED,
-            moment().unix(),
+            timestamp,
           )
           .pipe(
             tap(() =>

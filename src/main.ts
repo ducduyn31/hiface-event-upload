@@ -10,7 +10,7 @@ async function bootstrap() {
 
   if (
     configService.get('KAFKA_URI') &&
-    configService.get('KAFKA_URI') !== 'disable'
+    configService.get('KAFKA_URI').toLowerCase() !== 'disable'
   ) {
     app.connectMicroservice<MicroserviceOptions>({
       transport: Transport.KAFKA,
@@ -25,7 +25,7 @@ async function bootstrap() {
     });
     await app.startAllMicroservicesAsync();
   }
-  await app.listen(3000, () =>
+  await app.listen(8877, () =>
     new Logger('NestApplication').log('Server started on port 3000'),
   );
 }
