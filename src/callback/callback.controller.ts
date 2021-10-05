@@ -10,8 +10,7 @@ export class CallbackController {
   constructor(
     private callbackService: CallbackService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {
-  }
+  ) {}
 
   @MessagePattern('image-transfer')
   onPhotoCaptured(message: KafkaMessage) {
@@ -22,10 +21,10 @@ export class CallbackController {
   }
 
   @MessagePattern('select_face')
-  async onFaceDetect(message: KafkaMessage) {
+  onFaceDetect(message: KafkaMessage) {
     const payload = message.value as any as FaceDetectMessage;
     if (payload) {
-      await this.callbackService.handleFaceDetectedEvent(payload);
+      this.callbackService.handleFaceDetectedEvent(payload);
     }
     return 'OK';
   }

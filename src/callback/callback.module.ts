@@ -12,6 +12,7 @@ import { SharedModule } from '../shared/shared.module';
 import { DeviceService } from '../shared/device/device.service';
 import { KoalaService } from '../shared/koala/koala.service';
 import { CallbackService } from './callback.service';
+import { ClientsModule, Transport } from '@nestjs/microservices';
 
 @Module({
   imports: [
@@ -26,11 +27,36 @@ import { CallbackService } from './callback.service';
       }),
       inject: [ConfigService],
     }),
+    ClientsModule.registerAsync([
+      {
+        name: 'KAFKA_SERVICE',
+        imports: [ConfigModule],
+        useFactory: (configService: ConfigService) => ({
+          transport: Transport.KAFKA,
+          options: {
+            client: {
+              brokers: [
+                configService.get('KAFKA_URI').toLowerCase() === 'disable'
+                  ? undefined
+                  : configService.get('KAFKA_URI'),
+              ],
+            },
+          },
+        }),
+        inject: [ConfigService],
+      },
+    ]),
     RecordModule,
     SharedModule,
     TypeOrmModule.forFeature([Screen]),
   ],
   controllers: [CallbackController],
-  providers: [FoliageService, RecordService, DeviceService, KoalaService, CallbackService],
+  providers: [
+    FoliageService,
+    RecordService,
+    DeviceService,
+    KoalaService,
+    CallbackService,
+  ],
 })
 export class CallbackModule {}

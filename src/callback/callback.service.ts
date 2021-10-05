@@ -2,7 +2,7 @@ import { CACHE_MANAGER, Inject, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
 import fs from 'fs';
 import path from 'path';
-import { forkJoin, of } from 'rxjs';
+import { forkJoin, merge, of } from 'rxjs';
 import { catchError, mergeMap, pluck, tap } from 'rxjs/operators';
 import {
   LivenessType,
@@ -121,13 +121,17 @@ export class CallbackService {
     const fileBuffer = Buffer.from(message.head, 'base64');
     new Logger('FaceID', true).log(`Load image size: ${fileBuffer.length}`);
 
-    pads.map((pad) =>
+    const uploadToAll = pads.map((pad) =>
       this.recognizeAndUpload(
         server,
         { buffer: fileBuffer, originalname: message.oid + '.jpg' },
         pad,
         message.timestamp,
-      ).subscribe(),
+      ),
+    );
+
+    merge(...uploadToAll).subscribe((res) =>
+      new Logger('FaceID').log(`Upload complete: ${res}`),
     );
 
     return 'ok';
