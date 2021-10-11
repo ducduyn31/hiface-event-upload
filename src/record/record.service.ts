@@ -1,10 +1,10 @@
-import { HttpService, Injectable } from '@nestjs/common';
+import { HttpService, Injectable, Logger } from '@nestjs/common';
 import { ServerInfo } from '../shared/server-info';
 import { ScreenInfo } from '../shared/screen-info';
 import * as uuid from 'uuid';
 import * as moment from 'moment';
 import { generateSignature } from '../utils/signature';
-import { map, pluck } from 'rxjs/operators';
+import { catchError, map, pluck } from 'rxjs/operators';
 import * as FormData from 'form-data';
 import * as md5 from 'md5';
 import {
@@ -14,6 +14,7 @@ import {
   VerificationMode,
 } from './record';
 import { ConfigService } from '@nestjs/config';
+import { of } from 'rxjs';
 
 @Injectable()
 export class RecordService {
@@ -91,6 +92,12 @@ export class RecordService {
         map((resp) => {
           if (resp.code !== 1000) throw new Error(resp.msg);
           return resp;
+        }),
+        catchError((err) => {
+          new Logger('AlarmService').log(
+            `Something happened to alarm service: ${err.message}`,
+          );
+          return of(null);
         }),
       )
       .subscribe();
