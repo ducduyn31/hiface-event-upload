@@ -1,15 +1,13 @@
 import {
   CACHE_MANAGER,
   HttpException,
-  HttpService,
   Inject,
   Injectable,
   Logger,
 } from '@nestjs/common';
 import { ServerInfo } from '../server-info';
 import { ScreenInfo } from '../screen-info';
-import { catchError, map, pluck, tap } from 'rxjs/operators';
-import { RecordService } from '../../record/record.service';
+import { catchError, map, pluck } from 'rxjs/operators';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Screen } from '../../record/models/screen.entity';
 import { Repository } from 'typeorm';
@@ -18,6 +16,7 @@ import { throwError } from 'rxjs';
 import * as moment from 'moment';
 import { VerificationMode } from '../../record/record';
 import { Cache } from 'cache-manager';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class DeviceService {
@@ -26,9 +25,12 @@ export class DeviceService {
     private koalaService: KoalaService,
     @InjectRepository(Screen) private screenRepository: Repository<Screen>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
-  ) {
-  }
+  ) {}
 
+  /**
+   * Get the first pad that match the location by query the database
+   * @param location
+   */
   async getPadByLocation(location: string) {
     if (!location) {
       throw new HttpException('Please provide pad location', 400);
@@ -38,6 +40,10 @@ export class DeviceService {
     });
   }
 
+  /**
+   * Get the first pad that match the pad token by query the database
+   * @param token
+   */
   async getPadByToken(token: string) {
     if (!token) {
       throw new HttpException('Please provide pad token', 400);
@@ -47,33 +53,51 @@ export class DeviceService {
     });
   }
 
+  /**
+   * Get all pads in database
+   */
   async getAllPads() {
     return await this.screenRepository.find({});
   }
 
-  async getPadByBindedStream(stream: string): Promise<string[]> {
-    const rawPads = (await this.cacheManager.get(stream)) as string;
-    if (!rawPads) return [];
-    return JSON.parse(rawPads);
+  /**
+   * Get all pads that is bound to a rtsp source from cache
+   * @param stream rtsp source
+   */
+  async getPadByBoundStream(stream: string): Promise<string[]> {
+    try {
+      const rawPads = (await this.cacheManager.get(
+        `stream:${stream}`,
+      )) as string;
+      if (!rawPads) return [];
+      return JSON.parse(rawPads);
+    } catch (e) {
+      new Logger('DeviceService').error(e);
+      return [];
+    }
   }
 
-  async truncatePads() {
-    return await this.screenRepository.delete({});
-  }
-
-  async removePad(id) {
-    return await this.screenRepository.delete(id);
-  }
-
+  /**
+   * Bind a rtsp stream with a pad using pad token
+   * @param token the screen_token (deviceToken) of pad
+   * @param stream rtsp source
+   */
   async bindStream(token: string, stream: string): Promise<void> {
-    const padsBound = await this.getPadByBindedStream(stream);
+    const padsBound = await this.getPadByBoundStream(stream);
     if (padsBound.includes(token)) return;
     padsBound.push(token);
-    await this.cacheManager.set(stream, JSON.stringify(padsBound), { ttl: 0 });
+    await this.cacheManager.set(`stream:${stream}`, JSON.stringify(padsBound), {
+      ttl: 0,
+    });
   }
 
+  /**
+   * Unbind pad using pad token from rtsp stream
+   * @param token
+   * @param stream
+   */
   async unbindPad(token: string, stream: string): Promise<string[]> {
-    const padsBound = await this.getPadByBindedStream(stream);
+    const padsBound = await this.getPadByBoundStream(stream);
     const findingPadIndex = padsBound.indexOf(token);
     if (findingPadIndex === -1) return;
     const newPads = padsBound.splice(findingPadIndex, 1);
@@ -81,17 +105,24 @@ export class DeviceService {
     return newPads;
   }
 
+  /**
+   * Change default config of pad
+   * @param server where koala locate
+   * @param pad the new information of pad
+   */
   configPad(server: ServerInfo, pad: ScreenInfo) {
     const configHost = `${server.host}:${server.port}/meglink/${pad.device_token}/config`;
     const configPayload = {
       timestamp: moment().unix(),
-      'network.lan.ip': 'virtual',
+      'network.lan.ip': pad.network || 'virtual',
       'persty.location': pad.app_channel,
       'pass.face.recognition_mode': VerificationMode.FACE,
       'pass.verification_mode': VerificationMode.FACE,
       'sys.reboot_schedule': '5/02:00',
     };
-    const configHeaders = RecordService.generateOAuthHeaders(
+
+    // the header required for requesting to koala, having token
+    const configHeaders = KoalaService.generateOAuthHeaders(
       server,
       pad,
       `/meglink/${pad.device_token}/config`,
@@ -111,15 +142,21 @@ export class DeviceService {
         }),
         catchError((err) =>
           throwError(
-            new HttpException(
-              `Failed to config ${pad.device_token} pad on server: ${err.message}`,
-              400,
-            ),
+            () =>
+              new HttpException(
+                `Failed to config ${pad.device_token} pad on server: ${err.message}`,
+                400,
+              ),
           ),
         ),
       );
   }
 
+  /**
+   * Create a virtual pad
+   * @param server
+   * @param pad
+   */
   createPad(server: ServerInfo, pad: ScreenInfo) {
     const loginHost = `${server.host}:${server.port}/meglink/${pad.device_token}/login`;
 
@@ -134,7 +171,8 @@ export class DeviceService {
       app_version: pad.app_version,
     };
 
-    const loginHeaders = RecordService.generateOAuthHeaders(
+    // the header required for requesting to koala, having token
+    const loginHeaders = KoalaService.generateOAuthHeaders(
       server,
       pad,
       `/meglink/${pad.device_token}/login`,
@@ -155,60 +193,13 @@ export class DeviceService {
         }),
         catchError((err) =>
           throwError(
-            new HttpException(
-              `Failed to create pad on server: ${err.message}`,
-              400,
-            ),
+            () =>
+              new HttpException(
+                `Failed to create pad on server: ${err.message}`,
+                400,
+              ),
           ),
         ),
       );
-  }
-
-  createPadAndSave(server: ServerInfo, pad: ScreenInfo) {
-    return this.createPad(server, pad).pipe(
-      tap((response) => {
-        new Logger('Create Pad').log(
-          `Create pad ${pad.device_token} resulted in: ${JSON.stringify(
-            response,
-          )}`,
-        );
-        if (response.code !== 100000) return;
-
-        const {
-          data: {
-            meglink_version,
-            mqtt_username,
-            mqtt_password,
-            secret,
-            token,
-          },
-        } = response;
-
-        const { username, password } = pad;
-
-        this.koalaService
-          .getCompanyId(server, username, password)
-          .pipe(
-            tap((companyId) => {
-              this.screenRepository.insert({
-                deviceName: pad.app_channel,
-                companyId: companyId,
-                deviceToken: pad.device_token,
-                appChannel: pad.app_channel,
-                appVersion: pad.app_version,
-                meglinkVersion: meglink_version,
-                mqttPassword: mqtt_password,
-                mqttUsername: mqtt_username,
-                romChannel: pad.device_channel,
-                romVersion: pad.rom_version,
-                serial: pad.sn_number,
-                userSecret: secret,
-                userToken: token,
-              });
-            }),
-          )
-          .subscribe();
-      }),
-    );
   }
 }

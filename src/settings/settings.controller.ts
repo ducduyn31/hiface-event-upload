@@ -17,7 +17,6 @@ export class SettingsController implements OnModuleInit {
     private config: ConfigService,
   ) {}
 
-  // @Put('server')
   updateServer(@Body() server: ServerInfo) {
     this.cacheManager.set('server', server, { ttl: 0 });
     return server;

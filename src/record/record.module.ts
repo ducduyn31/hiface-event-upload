@@ -1,15 +1,17 @@
-import { CacheModule, HttpModule, Module } from '@nestjs/common';
+import { CacheModule, Module } from '@nestjs/common';
 import { RecordController } from './record.controller';
 import { SharedModule } from '../shared/shared.module';
 import { RecordService } from './record.service';
 import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config';
-import { FoliageService } from './foliage/foliage.service';
 import * as redisStore from 'cache-manager-redis-store';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Screen } from './models/screen.entity';
 import { DeviceService } from '../shared/device/device.service';
 import { KoalaService } from '../shared/koala/koala.service';
+import { HttpModule } from '@nestjs/axios';
+import { FoliageModule } from '../foliage/foliage.module';
+import { HttpCallbackService } from '../shared/http-callback/httpcallback.service';
 
 @Module({
   imports: [
@@ -26,9 +28,10 @@ import { KoalaService } from '../shared/koala/koala.service';
       inject: [ConfigService],
     }),
     TypeOrmModule.forFeature([Screen]),
+    FoliageModule,
   ],
   controllers: [RecordController],
-  providers: [RecordService, FoliageService, DeviceService, KoalaService],
-  exports: [RecordService, FoliageService],
+  providers: [RecordService, DeviceService, KoalaService, HttpCallbackService],
+  exports: [RecordService],
 })
 export class RecordModule {}

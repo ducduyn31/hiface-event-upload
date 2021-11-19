@@ -15,21 +15,16 @@ import { ServerInfo } from '../shared/server-info';
 import { RecordService } from './record.service';
 import { Cache } from 'cache-manager';
 import { FileInterceptor } from '@nestjs/platform-express';
-import {
-  LivenessType,
-  PassType,
-  RecognitionType,
-  Record,
-  VerificationMode,
-} from './record';
+import { Record } from './record';
 import * as moment from 'moment';
-import { catchError, delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
-import { FoliageService } from './foliage/foliage.service';
-import { forkJoin, of } from 'rxjs';
+import { delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
+import { FoliageService } from '../foliage/foliage.service';
+import { of } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
 import { customAlphabet } from 'nanoid';
 import { DeviceService } from '../shared/device/device.service';
-import { ConfigService } from '@nestjs/config';
+import { KoalaService } from '../shared/koala/koala.service';
+import { ScreenInfo } from '../shared/screen-info';
 
 @Controller('record')
 export class RecordController {
@@ -38,7 +33,7 @@ export class RecordController {
     private recordService: RecordService,
     private deviceService: DeviceService,
     private foliageService: FoliageService,
-    private configService: ConfigService,
+    private koalaService: KoalaService,
   ) {}
 
   @Post('quick')
@@ -62,94 +57,12 @@ export class RecordController {
       throw new HttpException('Failed to load pad', 400);
     }
 
-    const recognizeAndUpload = (photoBuffer: Buffer) =>
-      // Simultaneous perform actions
-      forkJoin([
-        // Recognize via foliage
-        this.foliageService
-          .recognize(
-            server,
-            { buffer: photoBuffer, originalname: file.originalname },
-            `${this.configService.get('PANDA_URL')}?company=${pad.companyId}`,
-          )
-          .pipe(
-            catchError((err) => {
-              new Logger('FoliageService').error(err.message);
-              return of(null);
-            }),
-          ),
-        // Liveness check via insight
-        this.foliageService
-          .livenessCheck({
-            buffer: photoBuffer,
-            originalname: file.originalname,
-          })
-          .pipe(
-            catchError((err) => {
-              new Logger('FoliageService').error(err.message);
-              return of(null);
-            }),
-          ),
-        // Upload image event to koala
-        this.recordService
-          .uploadRecordPhoto(server, pad.toScreenInfo(), {
-            buffer: photoBuffer,
-            originalname: file.originalname,
-          })
-          .pipe(
-            pluck('data', 'key'),
-            catchError((err) => {
-              new Logger('FoliageService').error(err.message);
-              return of(null);
-            }),
-          ),
-      ]).pipe(
-        mergeMap((result) => {
-          const [recognize, liveness, photoPath] = result;
-          if (!recognize.recognized) {
-            new Logger('FoliageService').error('Face is not recognizable');
-            return of(null);
-          }
-
-          const livenessThreshold =
-            +this.configService.get('LIVENESS_THRESHOLD');
-
-          // Alarm event
-          this.recordService.alarmEvent(
-            recognize.person.subject_id,
-            pad.toScreenInfo().device_token,
-          );
-
-          // Upload event to koala
-          return this.recordService
-            .uploadEvent(
-              server,
-              pad.toScreenInfo(),
-              recognize.person.subject_id,
-              photoPath as string,
-              RecognitionType.EMPLOYEE,
-              VerificationMode.FACE,
-              PassType.PASS,
-              +recognize.person.confidence,
-              +liveness,
-              +liveness >= livenessThreshold
-                ? LivenessType.LIVING
-                : LivenessType.NONLIVING,
-              moment().unix(),
-            )
-            .pipe(
-              catchError((err) => {
-                new Logger('FoliageService').error(err.message);
-                return of(null);
-              }),
-            );
-        }),
-      );
-
-    // Multi face detect, then crop
-    return this.foliageService.detectAndCrop(server, file).pipe(
-      mergeMap((buffer) => recognizeAndUpload(buffer)),
-      map(() => 'OK'),
+    // Recognize one face, then upload to koala
+    return this.koalaService.recognizeAndUploadEvent(
+      server,
+      pad,
+      { buffer: file.buffer, originalname: file.originalname },
+      moment().unix(),
     );
   }
 
@@ -163,13 +76,13 @@ export class RecordController {
 
     const pad = await this.deviceService.getPadByLocation(record.pad_name);
 
-    return this.recordService
+    return this.koalaService
       .uploadRecordPhoto(server, pad.toScreenInfo(), file)
       .pipe(
         pluck('data'),
         pluck('key'),
         mergeMap((photoPath) =>
-          this.recordService.uploadEvent(
+          this.koalaService.uploadEvent(
             server,
             pad.toScreenInfo(),
             record.person_id,
@@ -198,7 +111,7 @@ export class RecordController {
 
     const generatedSN = `M014200${twoNumberGenerator()}201${threeNumberGenerator()}1${threeNumberGenerator()}`;
 
-    const pad = {
+    const pad: ScreenInfo = {
       username: newDeviceRequest.username,
       password: newDeviceRequest.password,
       sn_number: generatedSN,
@@ -212,6 +125,7 @@ export class RecordController {
       user_token: '',
       user_secret: '',
       client_version_list: '',
+      network: newDeviceRequest.network,
     };
 
     return this.deviceService.createPad(server, pad).pipe(
@@ -272,6 +186,19 @@ export class RecordController {
     return payload.source;
   }
 
+  @Post('device/:token/unbind')
+  async unbindStream(@Param('token') token, @Body() payload) {
+    const server: ServerInfo = await this.cacheManager.get('server');
+    if (!server) throw new HttpException('Server is not set up yet', 400);
+
+    await this.deviceService.getPadByToken(token);
+    if (!payload.source)
+      throw new HttpException('`source` can not be empty', 400);
+
+    await this.deviceService.unbindPad(token, payload.source);
+    return payload.source;
+  }
+
   @Get('devices')
   listPads() {
     return this.deviceService.getAllPads().then((results) =>
@@ -279,17 +206,8 @@ export class RecordController {
         id: device.id,
         name: device.appChannel,
         token: device.deviceToken,
+        location: device.deviceLocation,
       })),
     );
   }
-
-  // @Delete('devices')
-  // removeAllPads() {
-  //   return this.deviceService.truncatePads();
-  // }
-  //
-  // @Delete('device/:id')
-  // removePad(@Param('id') id) {
-  //   return this.deviceService.removePad(id);
-  // }
 }

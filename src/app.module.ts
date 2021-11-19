@@ -6,6 +6,7 @@ import { CallbackModule } from './callback/callback.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { join } from 'path';
+import { FoliageModule } from './foliage/foliage.module';
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { join } from 'path';
       }),
       inject: [ConfigService],
     }),
+    FoliageModule,
   ],
 })
 export class AppModule {}

@@ -1,16 +1,10 @@
-import { HttpException, HttpService, Injectable, Logger } from '@nestjs/common';
-import { ServerInfo } from '../../shared/server-info';
+import { Injectable, Logger } from '@nestjs/common';
+import { ServerInfo } from '../shared/server-info';
 import * as FormData from 'form-data';
-import {
-  catchError,
-  map,
-  mergeAll,
-  mergeMap,
-  pluck,
-  tap,
-} from 'rxjs/operators';
+import { map, pluck, tap } from 'rxjs/operators';
 import { ConfigService } from '@nestjs/config';
-import { from, Observable, of, throwError } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class FoliageService {
@@ -48,7 +42,9 @@ export class FoliageService {
       .pipe(
         pluck('data'),
         tap(() =>
-          new Logger('FoliageService', true).log(`Complete recognition`),
+          new Logger('FoliageService', { timestamp: true }).log(
+            `Complete recognition`,
+          ),
         ),
       );
   }
@@ -56,11 +52,9 @@ export class FoliageService {
   detect(
     server: ServerInfo,
     photo: { buffer: Buffer; originalname: string },
-  ): Observable<{
-    faces_info: {
-      rect: { left: number; right: number; top: number; bottom: number };
-    }[];
-  }> {
+  ): Observable<
+    { left: number; right: number; top: number; bottom: number }[]
+  > {
     const host = `${this.getFoliageHost(server)}/detect`;
 
     const form = new FormData();
@@ -70,35 +64,10 @@ export class FoliageService {
       .post(host, form, {
         headers: form.getHeaders(),
       })
-      .pipe(pluck('data'));
-  }
-
-  detectAndCrop(
-    server: ServerInfo,
-    photo: { buffer: Buffer; originalname: string },
-  ): Observable<Buffer> {
-    return this.detect(server, photo).pipe(
-      pluck('faces_info'),
-      map((faces_info) => faces_info.map((info) => info.rect)),
-      tap((rects) =>
-        new Logger('FoliageService').log(`Found ${rects.length} faces`),
-      ),
-      mergeMap(
-        (
-          rects: { left: number; right: number; top: number; bottom: number }[],
-        ) =>
-          from(
-            rects.map((rect) =>
-              FoliageService.cropWithMargin(photo, rect, 0.2),
-            ),
-          ).pipe(mergeAll()),
-      ),
-      catchError((err) =>
-        throwError(
-          new HttpException(`Failed to retrieve faces: ${err.message}`, 400),
-        ),
-      ),
-    );
+      .pipe(
+        pluck('data', 'faces_info'),
+        map((face_info) => face_info.rect),
+      );
   }
 
   livenessCheck(photo: { buffer: Buffer; originalname: string }) {
@@ -120,13 +89,5 @@ export class FoliageService {
       map((faces) => faces[0]),
       pluck('attributes', 'liveness', 'pred'),
     );
-  }
-
-  static async cropWithMargin(
-    photo: { buffer: Buffer; originalname: string },
-    box: { left: number; top: number; bottom: number; right: number },
-    margin: number,
-  ) {
-    return photo.buffer;
   }
 }

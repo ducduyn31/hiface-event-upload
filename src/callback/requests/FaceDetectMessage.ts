@@ -3,9 +3,8 @@ export class FaceDetectMessage {
   score: number;
   xyxy: number[];
   tracking_id: number;
-  oid: string;
-  cid: string;
-  frame_order: number;
+  frame: string;
   source: string;
+  source_id: string;
   timestamp: number;
 }

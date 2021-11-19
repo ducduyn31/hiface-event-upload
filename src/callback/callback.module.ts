@@ -1,9 +1,9 @@
-import { CacheModule, HttpModule, Module } from '@nestjs/common';
+import { CacheModule, Module } from '@nestjs/common';
 import { CallbackController } from './callback.controller';
 import { ConfigModule } from '@nestjs/config/dist/config.module';
 import { ConfigService } from '@nestjs/config';
 import * as redisStore from 'cache-manager-redis-store';
-import { FoliageService } from '../record/foliage/foliage.service';
+import { FoliageService } from '../foliage/foliage.service';
 import { RecordService } from '../record/record.service';
 import { RecordModule } from '../record/record.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -13,6 +13,8 @@ import { DeviceService } from '../shared/device/device.service';
 import { KoalaService } from '../shared/koala/koala.service';
 import { CallbackService } from './callback.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { HttpModule } from '@nestjs/axios';
+import { HttpCallbackService } from '../shared/http-callback/httpcallback.service';
 
 @Module({
   imports: [
@@ -57,6 +59,7 @@ import { ClientsModule, Transport } from '@nestjs/microservices';
     DeviceService,
     KoalaService,
     CallbackService,
+    HttpCallbackService,
   ],
 })
 export class CallbackModule {}

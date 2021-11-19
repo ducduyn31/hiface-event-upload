@@ -1,4 +1,4 @@
-import { CACHE_MANAGER, CacheModule, HttpModule, Module } from '@nestjs/common';
+import { CACHE_MANAGER, CacheModule, Module } from '@nestjs/common';
 import { ScreenInfo } from './screen-info';
 import { ServerInfo } from './server-info';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -8,6 +8,9 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Screen } from '../record/models/screen.entity';
 import { DeviceService } from './device/device.service';
 import { KoalaService } from './koala/koala.service';
+import { HttpModule } from '@nestjs/axios';
+import { FoliageModule } from '../foliage/foliage.module';
+import { HttpCallbackService } from './http-callback/httpcallback.service';
 
 @Module({
   imports: [
@@ -23,6 +26,7 @@ import { KoalaService } from './koala/koala.service';
     }),
     TypeOrmModule.forFeature([Screen]),
     HttpModule,
+    FoliageModule,
   ],
   providers: [
     {
@@ -45,6 +49,7 @@ import { KoalaService } from './koala/koala.service';
     },
     DeviceService,
     KoalaService,
+    HttpCallbackService,
   ],
   exports: [
     {
