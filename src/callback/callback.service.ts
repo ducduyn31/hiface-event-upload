@@ -87,7 +87,7 @@ export class CallbackService implements OnModuleInit, OnModuleDestroy {
         server,
         { buffer: fileBuffer, originalname: message.tracking_id + '.jpg' },
         pad,
-        message.timestamp,
+        Math.floor(message.timestamp / 1000000000.0),
       ).pipe(
         tap((result) => {
           if (!result) return;
