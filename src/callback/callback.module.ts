@@ -26,6 +26,7 @@ import { HttpCallbackService } from '../shared/http-callback/httpcallback.servic
         store: redisStore,
         host: configService.get('REDIS_HOST'),
         port: configService.get('REDIS_PORT'),
+        ttl: 0,
       }),
       inject: [ConfigService],
     }),

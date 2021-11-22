@@ -24,18 +24,18 @@ export class HttpCallbackService {
 
   async saveCallback(destination: string) {
     const callbacks = await this.getAllCallbacks();
-    if (callbacks.includes(destination)) return;
-    const newCallbacks = callbacks.push(destination);
-    await this.cacheManager.set('callbacks', JSON.stringify(newCallbacks));
+    if (callbacks.includes(destination)) return callbacks;
+    callbacks.push(destination);
+    await this.cacheManager.set('callbacks', JSON.stringify(callbacks));
   }
 
   async deleteCallback(destination: string) {
     const callbacks = await this.getAllCallbacks();
     const findingCallbackIndex = callbacks.indexOf(destination);
     if (findingCallbackIndex === -1) return callbacks;
-    const newCallbacks = callbacks.splice(findingCallbackIndex, 1);
-    await this.cacheManager.set('callbacks', JSON.stringify(newCallbacks));
-    return newCallbacks;
+    callbacks.splice(findingCallbackIndex, 1);
+    await this.cacheManager.set('callbacks', JSON.stringify(callbacks));
+    return callbacks;
   }
 
   async activateAllEndpoints(payload) {

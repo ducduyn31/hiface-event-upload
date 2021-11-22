@@ -100,9 +100,9 @@ export class DeviceService {
     const padsBound = await this.getPadByBoundStream(stream);
     const findingPadIndex = padsBound.indexOf(token);
     if (findingPadIndex === -1) return;
-    const newPads = padsBound.splice(findingPadIndex, 1);
-    await this.cacheManager.set(stream, JSON.stringify(newPads));
-    return newPads;
+    padsBound.splice(findingPadIndex, 1);
+    await this.cacheManager.set(stream, JSON.stringify(padsBound));
+    return padsBound;
   }
 
   /**
