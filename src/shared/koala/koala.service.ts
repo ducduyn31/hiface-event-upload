@@ -271,14 +271,14 @@ export class KoalaService {
         return this.uploadEvent(
           server,
           pad.toScreenInfo(),
-          recognize.person.subject_id ? recognize.recognized : -1,
+          recognize.recognized ? recognize.person.subject_id : -1,
           photoPath as string,
-          RecognitionType.EMPLOYEE
-            ? recognize.recognized
+          recognize.recognized
+            ? RecognitionType.EMPLOYEE
             : RecognitionType.STRANGER,
           VerificationMode.FACE,
-          PassType.PASS ? recognize.recognized : PassType.NO_PASS,
-          +recognize.person.confidence ? recognize.recognized : null,
+          recognize.recognized ? PassType.PASS : PassType.NO_PASS,
+          recognize.recognized ? +recognize.person.confidence : null,
           !!liveness ? +liveness : 1,
           !!liveness
             ? +liveness >= livenessThreshold
