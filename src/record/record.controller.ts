@@ -17,7 +17,7 @@ import { Cache } from 'cache-manager';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Record } from './record';
 import * as moment from 'moment';
-import { delay, map, mergeMap, pluck, tap } from 'rxjs/operators';
+import { delay, map, mergeMap, tap } from 'rxjs/operators';
 import { FoliageService } from '../foliage/foliage.service';
 import { of } from 'rxjs';
 import { NewDeviceRequest } from './requests/new-device.request';
@@ -34,7 +34,8 @@ export class RecordController {
     private deviceService: DeviceService,
     private foliageService: FoliageService,
     private koalaService: KoalaService,
-  ) {}
+  ) {
+  }
 
   @Post('quick')
   @UseInterceptors(FileInterceptor('photo'))
@@ -66,6 +67,7 @@ export class RecordController {
     );
   }
 
+  @Post('/')
   @UseInterceptors(FileInterceptor('event_photo'))
   async post(
     @Body() record: Record & { pad_name: string },
@@ -75,29 +77,7 @@ export class RecordController {
     if (!server) throw new HttpException('Server is not set up yet', 400);
 
     const pad = await this.deviceService.getPadByLocation(record.pad_name);
-
-    return this.koalaService
-      .uploadRecordPhoto(server, pad.toScreenInfo(), file)
-      .pipe(
-        pluck('data'),
-        pluck('key'),
-        mergeMap((photoPath) =>
-          this.koalaService.uploadEvent(
-            server,
-            pad.toScreenInfo(),
-            record.person_id,
-            photoPath as string,
-            record.recognition_type,
-            record.verification_mode,
-            record.pass_type,
-            record.recognition_score,
-            record.liveness_score,
-            record.liveness_type,
-            moment().unix(),
-          ),
-        ),
-        pluck('data'),
-      );
+    return this.koalaService.uploadPhotoAndEvent(server, pad, file, moment().unix(), record.person_id);
   }
 
   @Post('device')

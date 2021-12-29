@@ -10,12 +10,7 @@ import { ScreenInfo } from '../screen-info';
 import * as FormData from 'form-data';
 import * as md5 from 'md5';
 import * as uuid from 'uuid';
-import {
-  LivenessType,
-  PassType,
-  RecognitionType,
-  VerificationMode,
-} from '../../record/record';
+import { LivenessType, PassType, RecognitionType, VerificationMode } from '../../record/record';
 import * as moment from 'moment';
 import { generateSignature } from '../../utils/signature';
 import { HttpCallbackService } from '../http-callback/httpcallback.service';
@@ -296,6 +291,31 @@ export class KoalaService {
             return throwError(() => err);
           }),
         );
+      }),
+    );
+  }
+
+  public async uploadPhotoAndEvent(
+    server: ServerInfo,
+    pad: Screen,
+    photo: {
+      buffer: Buffer;
+      originalname: string;
+    },
+    timestamp: number,
+    subjectId: number,
+  ){
+    // Upload event image to koala
+    return this.uploadRecordPhoto(
+      server,
+      pad.toScreenInfo(),
+      photo,
+    ).pipe(
+      pluck('data', 'key'),
+      mergeMap((photoPath) => this.uploadEvent(server, pad.toScreenInfo(), subjectId, photoPath, RecognitionType.EMPLOYEE, VerificationMode.FACE, PassType.PASS, 1, 1, LivenessType.LIVING, timestamp)),
+      catchError((err) => {
+        new Logger('FoliageService').error(err.message);
+        return of(null);
       }),
     );
   }
